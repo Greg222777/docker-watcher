@@ -1,8 +1,11 @@
 services:
-  docker-monitor:
+  dockerlistener:
     build: .
-    container_name: docker-monitor
+    container_name: dockerlistener
     restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=ton_token
+      - TELEGRAM_CHAT_ID=ton_chat_id
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./data:/app/data
+      - ./data:/data
