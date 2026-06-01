@@ -7,6 +7,7 @@ Docker Watcher monitors Docker container events, stores them locally in SQLite, 
 - 📦 Watches Docker container events
 - 💾 Stores event history locally
 - 📣 Sends Telegram notifications
+- 🌐 Provides a lightweight web UI
 - 🐋 Runs with Docker Compose
 
 ## 📋 Requirements
@@ -29,12 +30,15 @@ Create or update `docker-compose.yml`:
 ```yaml
 services:
   dockerwatcher:
-    build: .
+    image: greg222777/docker-watcher:latest
     container_name: dockerwatcher
     restart: unless-stopped
     environment:
       - TELEGRAM_BOT_TOKEN=your_bot_token_here
       - TELEGRAM_CHAT_ID=your_chat_id_here
+      - WEB_PORT=8000
+    ports:
+      - "8000:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./data:/data
@@ -48,7 +52,13 @@ Replace:
 Start Docker Watcher:
 
 ```bash
-docker compose up --build
+docker compose up
+```
+
+Open the web UI:
+
+```text
+http://localhost:8000
 ```
 
 The SQLite database and captured container logs are stored locally in:
