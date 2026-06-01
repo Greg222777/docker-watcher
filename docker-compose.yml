@@ -1,11 +1,11 @@
 services:
-  dockerlistener:
+  dockerwatcher:
     build: .
-    container_name: dockerlistener
+    container_name: dockerwatcher
     restart: unless-stopped
     environment:
-      - TELEGRAM_BOT_TOKEN=ton_token
-      - TELEGRAM_CHAT_ID=ton_chat_id
+      - TELEGRAM_BOT_TOKEN=your_bot_token_here
+      - TELEGRAM_CHAT_ID=your_chat_id_here
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./data:/data

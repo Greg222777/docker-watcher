@@ -1,7 +1,8 @@
 import os
 from typing import Optional
-
-import requests
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from app.models import EventLog
 
@@ -29,17 +30,21 @@ class TelegramNotifier:
 
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
 
-        payload = {
+        payload = urlencode({
             "chat_id": self.chat_id,
             "text": message,
             "parse_mode": "HTML"
-        }
+        }).encode("utf-8")
+
+        request = Request(url=url, data=payload, method="POST")
 
         try:
-            response = requests.post(url, data=payload, timeout=10)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            print(f"Could not send Telegram message: {e}")
+            with urlopen(request, timeout=10) as response:
+                response.read()
+        except HTTPError as error:
+            print(f"Could not send Telegram message: HTTP {error.code}")
+        except URLError as error:
+            print(f"Could not send Telegram message: {error.reason}")
 
     def send_event_log(self, event: EventLog) -> None:
         """

@@ -15,24 +15,6 @@ Docker Watcher monitors Docker container events, stores them locally in SQLite, 
 - Docker Compose
 - A Telegram bot token and chat ID if you want notifications
 
-## ⚙️ Telegram Setup
-
-Create a Telegram bot with BotFather and copy the bot token.
-
-Then get the chat ID where notifications should be sent.
-
-Add both values in `docker-compose.yml`:
-
-```yaml
-services:
-  dockerlistener:
-    environment:
-      - TELEGRAM_BOT_TOKEN=your_bot_token_here
-      - TELEGRAM_CHAT_ID=your_chat_id_here
-```
-
-If these values are missing or invalid, Docker Watcher will still run, but Telegram notifications will not be sent.
-
 ## 🚀 Installation With Docker
 
 Clone the project:
@@ -42,33 +24,40 @@ git clone <repository-url>
 cd docker-watcher
 ```
 
-Make sure `docker-compose.yml` contains your Telegram configuration:
+Create or update `docker-compose.yml`:
 
 ```yaml
-environment:
-  - TELEGRAM_BOT_TOKEN=your_bot_token_here
-  - TELEGRAM_CHAT_ID=your_chat_id_here
+services:
+  dockerwatcher:
+    build: .
+    container_name: dockerwatcher
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=your_bot_token_here
+      - TELEGRAM_CHAT_ID=your_chat_id_here
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/data
 ```
 
-Start the service:
+Replace:
+
+- `your_bot_token_here` with your Telegram bot token
+- `your_chat_id_here` with the Telegram chat ID that should receive notifications
+
+Start Docker Watcher:
 
 ```bash
 docker compose up --build
 ```
 
-Docker Watcher will use the Docker socket from the host:
-
-```yaml
-volumes:
-  - /var/run/docker.sock:/var/run/docker.sock
-  - ./data:/data
-```
-
-The SQLite database is stored in:
+The SQLite database and captured container logs are stored locally in:
 
 ```text
 ./data
 ```
+
+Telegram is optional. If the token or chat ID is missing, Docker Watcher will still run, but notifications will not be sent.
 
 ## 📌 Project Status
 
