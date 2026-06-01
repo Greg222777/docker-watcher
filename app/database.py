@@ -1,112 +1,129 @@
 import sqlite3
-from datetime import datetime
-from typing import Optional, Any
+
+from app.models import EventLog
 
 DB_PATH = "/data/docker_events.db"
 
 
+class EventLogRepository:
+    def __init__(self, db_path: str = DB_PATH) -> None:
+        self.db_path = db_path
+
+    def init_db(self) -> None:
+        """
+        Initialize the database and create the events table if it does not exist.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS container_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    container_name TEXT NOT NULL,
+                    container_id TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    exit_code TEXT,
+                    log_file_path TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
+    def save(self, event: EventLog) -> None:
+        """
+        Save a Docker container event in the database.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                INSERT INTO container_events (
+                    container_name,
+                    container_id,
+                    action,
+                    exit_code,
+                    log_file_path,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, event.to_insert_values())
+
+    def delete(self, event_id: int) -> None:
+        """
+        Delete a single event by its database ID.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("""
+                DELETE FROM container_events
+                WHERE id = ?
+            """, (event_id,))
+
+    def delete_all(self) -> None:
+        """
+        Delete all events from the database.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("DELETE FROM container_events")
+
+    def select_between(
+        self,
+        start_timestamp: str,
+        end_timestamp: str
+    ) -> list[EventLog]:
+        """
+        Retrieve events between two ISO timestamps.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+
+            cursor = conn.execute("""
+                SELECT *
+                FROM container_events
+                WHERE created_at BETWEEN ? AND ?
+                ORDER BY created_at DESC
+            """, (
+                start_timestamp,
+                end_timestamp
+            ))
+
+            return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
+
+    def select_all(self) -> list[EventLog]:
+        """
+        Retrieve all events ordered by creation date descending.
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+
+            cursor = conn.execute("""
+                SELECT *
+                FROM container_events
+                ORDER BY created_at DESC
+            """)
+
+            return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
+
+
+event_log_repository = EventLogRepository()
+
+
 def init_db() -> None:
-    """
-    Initialize the database and create the events table if it does not exist.
-    """
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS container_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                container_name TEXT NOT NULL,
-                container_id TEXT NOT NULL,
-                action TEXT NOT NULL,
-                exit_code TEXT,
-                log_file_path TEXT,
-                created_at TEXT NOT NULL
-            )
-        """)
+    event_log_repository.init_db()
 
 
-def save_event(
-    container_name: str,
-    container_id: str,
-    action: str,
-    exit_code: Optional[str] = None,
-    log_file_path: Optional[str] = None
-) -> None:
-    """
-    Save a Docker container event in the database.
-    """
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-            INSERT INTO container_events (
-                container_name,
-                container_id,
-                action,
-                exit_code,
-                log_file_path,
-                created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (
-            container_name,
-            container_id,
-            action,
-            exit_code,
-            log_file_path,
-            datetime.now().isoformat()
-        ))
+def save_event(event: EventLog) -> None:
+    event_log_repository.save(event)
 
 
 def delete_event(event_id: int) -> None:
-    """
-    Delete a single event by its database ID.
-    """
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-            DELETE FROM container_events
-            WHERE id = ?
-        """, (event_id,))
+    event_log_repository.delete(event_id)
 
 
 def delete_all_events() -> None:
-    """
-    Delete all events from the database.
-    """
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("DELETE FROM container_events")
+    event_log_repository.delete_all()
 
 
 def select_events_between(
-    start_timestamp: int,
-    end_timestamp: int
-) -> list[dict[str, Any]]:
-    """
-    Retrieve events between two timestamps.
-    """
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-
-        cursor = conn.execute("""
-            SELECT *
-            FROM container_events
-            WHERE created_at BETWEEN ? AND ?
-            ORDER BY created_at DESC
-        """, (
-            start_timestamp,
-            end_timestamp
-        ))
-
-        return [dict(row) for row in cursor.fetchall()]
+    start_timestamp: str,
+    end_timestamp: str
+) -> list[EventLog]:
+    return event_log_repository.select_between(start_timestamp, end_timestamp)
 
 
-def select_all_events() -> list[dict[str, Any]]:
-    """
-    Retrieve all events ordered by creation date descending.
-    """
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-
-        cursor = conn.execute("""
-            SELECT *
-            FROM container_events
-            ORDER BY created_at DESC
-        """)
-
-        return [dict(row) for row in cursor.fetchall()]
+def select_all_events() -> list[EventLog]:
+    return event_log_repository.select_all()
