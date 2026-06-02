@@ -71,19 +71,7 @@ Telegram is optional. If the token or chat ID is missing, Docker Watcher will st
 
 ## Monitoring options
 
-Docker Watcher listens to Docker container events and only records/sends notifications for the actions selected in the web UI.
-
-Open the web UI, then click:
-
-```text
-Options
-```
-
-Select the Docker event actions you want to monitor, then click:
-
-```text
-Save
-```
+Docker Watcher listens to Docker container events and only records/sends notifications for the actions selected in the web UI options.
 
 The selection is stored in SQLite, so it is preserved when Docker Watcher restarts.
 
@@ -113,14 +101,3 @@ Recommended choices:
 - Keep `health_status` enabled if your containers define Docker health checks.
 - Enable `start`, `create`, or `destroy` if you want lifecycle visibility, not only failures.
 - Disable noisy actions such as `attach`, `resize`, `top`, or `exec_start` unless you specifically need audit-style visibility.
-
-## 📌 Project Status
-
-This project is still in development.
-
-Planned improvements:
-
-- better event filtering
-- richer Telegram messages
-- automated tests
-- production usage documentation
