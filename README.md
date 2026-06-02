@@ -69,6 +69,51 @@ The SQLite database and captured container logs are stored locally in:
 
 Telegram is optional. If the token or chat ID is missing, Docker Watcher will still run, but notifications will not be sent.
 
+## Monitoring options
+
+Docker Watcher listens to Docker container events and only records/sends notifications for the actions selected in the web UI.
+
+Open the web UI, then click:
+
+```text
+Options
+```
+
+Select the Docker event actions you want to monitor, then click:
+
+```text
+Save
+```
+
+The selection is stored in SQLite, so it is preserved when Docker Watcher restarts.
+
+By default, Docker Watcher monitors abnormal or operationally important container actions:
+
+```text
+destroy
+die
+exec_die
+health_status
+kill
+oom
+pause
+restart
+stop
+```
+
+Use the official Docker event documentation to decide what matters for your setup:
+
+```text
+https://docs.docker.com/reference/cli/docker/system/events/
+```
+
+Recommended choices:
+
+- Keep `die`, `oom`, `kill`, `stop`, and `restart` enabled if you want alerts when containers stop, crash, or are killed.
+- Keep `health_status` enabled if your containers define Docker health checks.
+- Enable `start`, `create`, or `destroy` if you want lifecycle visibility, not only failures.
+- Disable noisy actions such as `attach`, `resize`, `top`, or `exec_start` unless you specifically need audit-style visibility.
+
 ## 📌 Project Status
 
 This project is still in development.
