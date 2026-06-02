@@ -7,7 +7,14 @@ from shutil import rmtree
 from threading import Thread
 from urllib.parse import parse_qs, unquote, urlparse
 
-from app.database import delete_all_events, select_all_events, select_events_between
+from app.database import (
+    delete_all_events,
+    replace_monitored_event_actions,
+    select_all_events,
+    select_events_between,
+    select_monitored_event_actions,
+)
+from app.models import CONTAINER_EVENT_ACTIONS, DockerEventAction
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
@@ -29,9 +36,18 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:
-        if self.path == "/events/delete-all":
+        parsed_url = urlparse(self.path)
+
+        if parsed_url.path == "/events/delete-all":
             self._delete_all_events_and_logs()
             self._redirect("/")
+            return
+
+        if parsed_url.path == "/options/monitoring":
+            form_values = self._get_form_values()
+            self._save_monitoring_options(form_values)
+            redirect_to = form_values.get("redirect_to", ["/"])[0].strip() or "/"
+            self._redirect(redirect_to)
             return
 
         self.send_error(HTTPStatus.NOT_FOUND)
@@ -84,10 +100,20 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
         except OSError as error:
             print(f"Could not delete log files: {error}")
 
+    def _save_monitoring_options(self, form_values: dict[str, list[str]]) -> None:
+        actions = {
+            action
+            for raw_action in form_values.get("actions", [])
+            if (action := DockerEventAction.from_raw(raw_action)) is not None
+        }
+
+        replace_monitored_event_actions(actions)
+
     def _render_events_page(self) -> str:
         container_filter = self._get_container_filter()
         start_filter = self._get_query_value("start")
         end_filter = self._get_query_value("end")
+        monitored_actions = select_monitored_event_actions()
         events = self._select_events(start_filter, end_filter)
         events = self._filter_events(events, container_filter)
         rows = "\n".join(self._render_event_row(event) for event in events)
@@ -98,6 +124,8 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
                     <td colspan="7" class="empty">No Docker events recorded yet.</td>
                 </tr>
             """
+
+        options_modal = self._render_options_modal(monitored_actions)
 
         return f"""<!doctype html>
 <html lang="en">
@@ -184,6 +212,12 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
             font: inherit;
         }}
 
+        input[type="checkbox"] {{
+            width: auto;
+            max-width: none;
+            padding: 0;
+        }}
+
         button,
         .button {{
             display: inline-flex;
@@ -261,6 +295,66 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
             padding: 28px 12px;
             text-align: center;
         }}
+
+        .modal {{
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            background: rgba(23, 32, 51, 0.42);
+            padding: 24px;
+            overflow-y: auto;
+        }}
+
+        .modal:target {{
+            display: block;
+        }}
+
+        .modal-panel {{
+            width: min(760px, 100%);
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--line);
+        }}
+
+        .modal-header,
+        .modal-footer {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--line);
+        }}
+
+        .modal-footer {{
+            justify-content: flex-end;
+            border-top: 1px solid var(--line);
+            border-bottom: 0;
+        }}
+
+        .modal-title {{
+            margin: 0;
+            font-size: 16px;
+        }}
+
+        .options-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 8px 14px;
+            padding: 16px;
+        }}
+
+        .checkbox-label {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 28px;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: none;
+        }}
     </style>
 </head>
 <body>
@@ -300,9 +394,12 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
                 <a class="button" href="{escape(self.path)}">Refresh</a>
                 <a class="button" href="/">Clear</a>
             </form>
-            <form method="post" action="/events/delete-all">
-                <button class="danger" type="submit">Delete all</button>
-            </form>
+            <div class="filter-form">
+                <a class="button" href="#options">Options</a>
+                <form method="post" action="/events/delete-all">
+                    <button class="danger" type="submit">Delete all</button>
+                </form>
+            </div>
         </div>
         <div class="table-wrap">
             <table>
@@ -323,8 +420,57 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
             </table>
         </div>
     </main>
+    {options_modal}
 </body>
 </html>"""
+
+    def _render_options_modal(self, monitored_actions: set[DockerEventAction]) -> str:
+        checkboxes = "\n".join(
+            self._render_action_checkbox(action, monitored_actions)
+            for action in CONTAINER_EVENT_ACTIONS
+        )
+
+        return f"""
+    <div class="modal" id="options">
+        <form class="modal-panel" method="post" action="/options/monitoring">
+            <div class="modal-header">
+                <h2 class="modal-title">Monitoring options</h2>
+                <a class="button" href="{escape(self.path)}">Close</a>
+            </div>
+            <div class="options-grid">
+                {checkboxes}
+            </div>
+            <div class="modal-footer">
+                <input
+                    type="hidden"
+                    name="redirect_to"
+                    value="{escape(self.path)}"
+                >
+                <a class="button" href="{escape(self.path)}">Cancel</a>
+                <button class="primary" type="submit">Save</button>
+            </div>
+        </form>
+    </div>
+        """
+
+    def _render_action_checkbox(
+        self,
+        action: DockerEventAction,
+        monitored_actions: set[DockerEventAction],
+    ) -> str:
+        checked = " checked" if action in monitored_actions else ""
+        label = action.value.replace("_", " ")
+
+        return f"""
+            <label class="checkbox-label">
+                <input
+                    type="checkbox"
+                    name="actions"
+                    value="{escape(action.value)}"{checked}
+                >
+                {escape(label)}
+            </label>
+        """
 
     def _get_container_filter(self) -> str:
         return self._get_query_value("container")
@@ -332,6 +478,15 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
     def _get_query_value(self, name: str) -> str:
         query = parse_qs(urlparse(self.path).query)
         return query.get(name, [""])[0].strip()
+
+    def _get_form_values(self) -> dict[str, list[str]]:
+        content_length = int(self.headers.get("Content-Length", "0"))
+
+        if content_length == 0:
+            return {}
+
+        body = self.rfile.read(content_length).decode("utf-8")
+        return parse_qs(body)
 
     def _select_events(self, start_filter: str, end_filter: str) -> list[object]:
         start_timestamp = self._datetime_local_to_iso(start_filter)

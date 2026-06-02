@@ -7,11 +7,13 @@ import docker
 from docker.errors import APIError, DockerException, NotFound
 
 from app.actions import handle_event_log
-from app.models import EventLog
+from app.models import DockerEventAction, EventLog
 
 
 DockerEvent = dict[str, Any]
 EventHandler = Callable[[EventLog], None]
+WatchedAction = str | DockerEventAction
+WatchedActionProvider = Callable[[], set[WatchedAction]]
 LOG_DIR = Path("/data/logs")
 LOG_TAIL_LINES = 200
 
@@ -25,13 +27,15 @@ class DockerListener:
     def __init__(
         self,
         event_handler: EventHandler = handle_event_log,
-        watched_actions: Optional[set[str]] = None,
+        watched_actions: Optional[set[WatchedAction]] = None,
+        watched_action_provider: Optional[WatchedActionProvider] = None,
         client: Optional[DockerClient] = None,
         log_dir: Path = LOG_DIR,
     ) -> None:
         self.client = client or docker.from_env()
         self.event_handler = event_handler
         self.watched_actions = watched_actions
+        self.watched_action_provider = watched_action_provider
         self.log_dir = log_dir
 
     def listen(self) -> None:
@@ -50,10 +54,28 @@ class DockerListener:
                 self.event_handler(event_log)
 
     def _should_handle(self, event_log: EventLog) -> bool:
-        if self.watched_actions is None:
+        watched_actions = self._get_watched_actions()
+
+        if watched_actions is None:
             return True
 
-        return event_log.action in self.watched_actions
+        normalized_action = DockerEventAction.normalize(event_log.action)
+
+        return normalized_action in {
+            action.value if isinstance(action, DockerEventAction) else action
+            for action in watched_actions
+        }
+
+    def _get_watched_actions(self) -> Optional[set[WatchedAction]]:
+        if self.watched_actions is not None:
+            return self.watched_actions
+
+        if self.watched_action_provider is not None:
+            return self.watched_action_provider()
+
+        from app.database import select_monitored_event_actions
+
+        return select_monitored_event_actions()
 
     def _build_event_log(self, event: DockerEvent) -> Optional[EventLog]:
         action = event.get("Action") or event.get("status")

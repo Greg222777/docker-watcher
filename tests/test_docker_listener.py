@@ -25,6 +25,7 @@ if "docker" not in sys.modules:
     sys.modules["docker.errors"] = docker_errors_module
 
 from app.docker_listener import DockerListener
+from app.models import DockerEventAction, EventLog
 
 
 TEST_DIR = Path(__file__).resolve().parent
@@ -54,6 +55,7 @@ class DockerListenerTest(unittest.TestCase):
         self._clear_test_logs()
         listener = DockerListener(
             event_handler=handled_events.append,
+            watched_actions={DockerEventAction.DIE},
             client=client,
             log_dir=TEST_LOG_DIR,
         )
@@ -88,6 +90,30 @@ class DockerListenerTest(unittest.TestCase):
         listener.listen()
 
         self.assertEqual(handled_events, [])
+
+    def test_should_handle_accepts_documented_event_action_enum(self) -> None:
+        listener = DockerListener.__new__(DockerListener)
+        listener.watched_actions = {DockerEventAction.DIE}
+
+        event = EventLog(
+            container_name="api",
+            container_id="abcdef1234567890",
+            action="die",
+        )
+
+        self.assertTrue(listener._should_handle(event))
+
+    def test_should_handle_normalizes_health_status_actions(self) -> None:
+        listener = DockerListener.__new__(DockerListener)
+        listener.watched_actions = {DockerEventAction.HEALTH_STATUS}
+
+        event = EventLog(
+            container_name="api",
+            container_id="abcdef1234567890",
+            action="health_status: healthy",
+        )
+
+        self.assertTrue(listener._should_handle(event))
 
     def test_build_event_log_returns_none_for_incomplete_event(self) -> None:
         listener = DockerListener.__new__(DockerListener)

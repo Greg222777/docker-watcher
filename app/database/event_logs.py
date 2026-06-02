@@ -2,6 +2,7 @@ import sqlite3
 
 from app.models import EventLog
 
+
 DB_PATH = "/data/docker_events.db"
 
 
@@ -97,33 +98,3 @@ class EventLogRepository:
             """)
 
             return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
-
-
-event_log_repository = EventLogRepository()
-
-
-def init_db() -> None:
-    event_log_repository.init_db()
-
-
-def save_event(event: EventLog) -> None:
-    event_log_repository.save(event)
-
-
-def delete_event(event_id: int) -> None:
-    event_log_repository.delete(event_id)
-
-
-def delete_all_events() -> None:
-    event_log_repository.delete_all()
-
-
-def select_events_between(
-    start_timestamp: str,
-    end_timestamp: str
-) -> list[EventLog]:
-    return event_log_repository.select_between(start_timestamp, end_timestamp)
-
-
-def select_all_events() -> list[EventLog]:
-    return event_log_repository.select_all()
