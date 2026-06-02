@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 import re
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Protocol
 
 import docker
 from docker.errors import APIError, DockerException, NotFound
@@ -16,15 +16,23 @@ LOG_DIR = Path("/data/logs")
 LOG_TAIL_LINES = 200
 
 
+class DockerClient(Protocol):
+    def events(self, **kwargs: Any) -> Any:
+        ...
+
+
 class DockerListener:
     def __init__(
         self,
         event_handler: EventHandler = handle_event_log,
-        watched_actions: Optional[set[str]] = None
+        watched_actions: Optional[set[str]] = None,
+        client: Optional[DockerClient] = None,
+        log_dir: Path = LOG_DIR,
     ) -> None:
-        self.client = docker.from_env()
+        self.client = client or docker.from_env()
         self.event_handler = event_handler
         self.watched_actions = watched_actions
+        self.log_dir = log_dir
 
     def listen(self) -> None:
         print("Docker Watcher is listening for container events...")
@@ -105,9 +113,9 @@ class DockerListener:
             return None
 
         try:
-            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            self.log_dir.mkdir(parents=True, exist_ok=True)
 
-            log_file_path = LOG_DIR / self._build_log_filename(
+            log_file_path = self.log_dir / self._build_log_filename(
                 container_name=container_name,
                 container_id=container_id,
                 action=action,
