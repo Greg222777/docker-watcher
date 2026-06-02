@@ -7,7 +7,7 @@ from shutil import rmtree
 from threading import Thread
 from urllib.parse import parse_qs, unquote, urlparse
 
-from app.database import delete_all_events, select_all_events
+from app.database import delete_all_events, select_all_events, select_events_between
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
@@ -86,7 +86,10 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
 
     def _render_events_page(self) -> str:
         container_filter = self._get_container_filter()
-        events = self._filter_events(select_all_events(), container_filter)
+        start_filter = self._get_query_value("start")
+        end_filter = self._get_query_value("end")
+        events = self._select_events(start_filter, end_filter)
+        events = self._filter_events(events, container_filter)
         rows = "\n".join(self._render_event_row(event) for event in events)
 
         if not rows:
@@ -101,7 +104,6 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="refresh" content="15">
     <title>Docker Watcher</title>
     <style>
         :root {{
@@ -264,7 +266,7 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
 <body>
     <header>
         <h1>Docker Watcher</h1>
-        <p class="subtitle">{len(events)} recorded event(s). Auto-refresh every 15 seconds.</p>
+        <p class="subtitle">{len(events)} recorded event(s).</p>
     </header>
     <main>
         <div class="toolbar">
@@ -278,7 +280,24 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
                         placeholder="name or container id"
                     >
                 </label>
+                <label>
+                    From
+                    <input
+                        type="datetime-local"
+                        name="start"
+                        value="{escape(start_filter)}"
+                    >
+                </label>
+                <label>
+                    To
+                    <input
+                        type="datetime-local"
+                        name="end"
+                        value="{escape(end_filter)}"
+                    >
+                </label>
                 <button class="primary" type="submit">Filter</button>
+                <a class="button" href="{escape(self.path)}">Refresh</a>
                 <a class="button" href="/">Clear</a>
             </form>
             <form method="post" action="/events/delete-all">
@@ -308,8 +327,29 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
 </html>"""
 
     def _get_container_filter(self) -> str:
+        return self._get_query_value("container")
+
+    def _get_query_value(self, name: str) -> str:
         query = parse_qs(urlparse(self.path).query)
-        return query.get("container", [""])[0].strip()
+        return query.get(name, [""])[0].strip()
+
+    def _select_events(self, start_filter: str, end_filter: str) -> list[object]:
+        start_timestamp = self._datetime_local_to_iso(start_filter)
+        end_timestamp = self._datetime_local_to_iso(end_filter)
+
+        if start_timestamp or end_timestamp:
+            return select_events_between(
+                start_timestamp or "0001-01-01T00:00:00",
+                end_timestamp or "9999-12-31T23:59:59",
+            )
+
+        return select_all_events()
+
+    def _datetime_local_to_iso(self, value: str) -> str:
+        if not value:
+            return ""
+
+        return value if "T" in value else value.replace(" ", "T")
 
     def _filter_events(self, events: list[object], container_filter: str) -> list[object]:
         if not container_filter:
