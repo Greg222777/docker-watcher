@@ -25,6 +25,7 @@ if "docker" not in sys.modules:
     sys.modules["docker.errors"] = docker_errors_module
 
 from app.docker_listener import DockerListener
+from app.docker_events import DockerEventLogBuilder, DockerLogCollector
 from app.models import DockerEventAction, EventLog
 
 
@@ -117,6 +118,9 @@ class DockerListenerTest(unittest.TestCase):
 
     def test_build_event_log_returns_none_for_incomplete_event(self) -> None:
         listener = DockerListener.__new__(DockerListener)
+        listener.event_log_builder = DockerEventLogBuilder(
+            DockerLogCollector(self._build_client([]), log_dir=TEST_LOG_DIR)
+        )
 
         self.assertIsNone(listener._build_event_log({"Action": "start"}))
         self.assertIsNone(listener._build_event_log({"id": "abcdef1234567890"}))
