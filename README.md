@@ -21,14 +21,7 @@ events happen.
 
 ## Installation With Docker
 
-Clone the project:
-
-```bash
-git clone <repository-url>
-cd docker-watcher
-```
-
-Create or update `docker-compose.yml`:
+Create a `docker-compose.yml` file:
 
 ```yaml
 services:
@@ -52,12 +45,6 @@ Replace:
 - `your_bot_token_here` with your Telegram bot token.
 - `your_chat_id_here` with the Telegram chat ID that should receive notifications.
 
-Start Docker Watcher:
-
-```bash
-docker compose up
-```
-
 Open the Flask web UI:
 
 ```text
@@ -72,32 +59,6 @@ The SQLite database and captured container logs are stored locally in:
 
 Telegram is optional. If the token or chat ID is missing, Docker Watcher will
 still run, but notifications will not be sent.
-
-## Local Development
-
-Install Python dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Run the application:
-
-```bash
-python -m app.main
-```
-
-Run tests:
-
-```bash
-python -m unittest discover
-```
-
-Preview the Flask web UI with mock data:
-
-```bash
-python scripts/preview_web.py
-```
 
 ## Monitoring Options
 
