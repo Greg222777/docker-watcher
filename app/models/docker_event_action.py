@@ -1,3 +1,4 @@
+from collections.abc import Collection
 from enum import StrEnum
 
 
@@ -100,7 +101,10 @@ class DockerEventAction(StrEnum):
         return self.value == self.normalize(action)
 
 
-CONTAINER_EVENT_ACTIONS = [
+WatchedDockerActions = Collection[DockerEventAction]
+
+
+WATCHED_DOCKER_ACTIONS = [
     DockerEventAction.ATTACH,
     DockerEventAction.COMMIT,
     DockerEventAction.COPY,

@@ -7,14 +7,8 @@ from shutil import rmtree
 from threading import Thread
 from urllib.parse import parse_qs, unquote, urlparse
 
-from app.database import (
-    delete_all_events,
-    replace_monitored_event_actions,
-    select_all_events,
-    select_events_between,
-    select_monitored_event_actions,
-)
-from app.models import CONTAINER_EVENT_ACTIONS, DockerEventAction
+from app.database import event_log_repository, monitored_event_action_repository
+from app.models import DockerEventAction, WATCHED_DOCKER_ACTIONS
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
@@ -92,7 +86,7 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
         return log_path == LOG_DIR or LOG_DIR in log_path.parents
 
     def _delete_all_events_and_logs(self) -> None:
-        delete_all_events()
+        event_log_repository.delete_all()
 
         try:
             if LOG_DIR.exists():
@@ -107,13 +101,13 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
             if (action := DockerEventAction.from_raw(raw_action)) is not None
         }
 
-        replace_monitored_event_actions(actions)
+        monitored_event_action_repository.replace_all(actions)
 
     def _render_events_page(self) -> str:
         container_filter = self._get_container_filter()
         start_filter = self._get_query_value("start")
         end_filter = self._get_query_value("end")
-        monitored_actions = select_monitored_event_actions()
+        monitored_actions = monitored_event_action_repository.select_all()
         events = self._select_events(start_filter, end_filter)
         events = self._filter_events(events, container_filter)
         rows = "\n".join(self._render_event_row(event) for event in events)
@@ -427,7 +421,7 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
     def _render_options_modal(self, monitored_actions: set[DockerEventAction]) -> str:
         checkboxes = "\n".join(
             self._render_action_checkbox(action, monitored_actions)
-            for action in CONTAINER_EVENT_ACTIONS
+            for action in WATCHED_DOCKER_ACTIONS
         )
 
         return f"""
@@ -493,12 +487,12 @@ class EventLogRequestHandler(BaseHTTPRequestHandler):
         end_timestamp = self._datetime_local_to_iso(end_filter)
 
         if start_timestamp or end_timestamp:
-            return select_events_between(
+            return event_log_repository.select_between(
                 start_timestamp or "0001-01-01T00:00:00",
                 end_timestamp or "9999-12-31T23:59:59",
             )
 
-        return select_all_events()
+        return event_log_repository.select_all()
 
     def _datetime_local_to_iso(self, value: str) -> str:
         if not value:

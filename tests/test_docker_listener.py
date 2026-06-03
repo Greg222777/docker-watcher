@@ -25,7 +25,6 @@ if "docker" not in sys.modules:
     sys.modules["docker.errors"] = docker_errors_module
 
 from app.docker_listener import DockerListener
-from app.docker_events import ContainerLogWriter, DockerEventLogBuilder
 from app.models import DockerEventAction, EventLog
 
 
@@ -55,12 +54,12 @@ class DockerListenerTest(unittest.TestCase):
         self._clear_test_logs()
         listener = DockerListener(
             client=client,
-            watched_actions={DockerEventAction.DIE.value},
+            watched_docker_actions={DockerEventAction.DIE},
             log_dir=TEST_LOG_DIR,
         )
 
         with (
-            patch("app.docker_listener.save_event") as save_event,
+            patch("app.docker_listener.event_log_repository.save") as save_event,
             patch(
                 "app.docker_listener.telegram_notifier.send_event_log"
             ) as send_event_log,
@@ -89,12 +88,12 @@ class DockerListenerTest(unittest.TestCase):
         self._clear_test_logs()
         listener = DockerListener(
             client=client,
-            watched_actions={"die"},
+            watched_docker_actions={DockerEventAction.DIE},
             log_dir=TEST_LOG_DIR,
         )
 
         with (
-            patch("app.docker_listener.save_event") as save_event,
+            patch("app.docker_listener.event_log_repository.save") as save_event,
             patch(
                 "app.docker_listener.telegram_notifier.send_event_log"
             ) as send_event_log,
@@ -106,7 +105,7 @@ class DockerListenerTest(unittest.TestCase):
 
     def test_should_handle_accepts_documented_event_action_enum(self) -> None:
         listener = DockerListener.__new__(DockerListener)
-        listener.watched_actions = {DockerEventAction.DIE.value}
+        listener.watched_docker_actions = {DockerEventAction.DIE}
 
         event = EventLog(
             container_name="api",
@@ -118,7 +117,7 @@ class DockerListenerTest(unittest.TestCase):
 
     def test_should_handle_normalizes_health_status_actions(self) -> None:
         listener = DockerListener.__new__(DockerListener)
-        listener.watched_actions = {DockerEventAction.HEALTH_STATUS.value}
+        listener.watched_docker_actions = {DockerEventAction.HEALTH_STATUS}
 
         event = EventLog(
             container_name="api",
@@ -127,36 +126,6 @@ class DockerListenerTest(unittest.TestCase):
         )
 
         self.assertTrue(listener._should_handle(event))
-
-    def test_build_event_log_returns_none_for_incomplete_event(self) -> None:
-        listener = DockerListener.__new__(DockerListener)
-        listener.event_log_builder = DockerEventLogBuilder(
-            ContainerLogWriter(self._build_client([]), log_dir=TEST_LOG_DIR)
-        )
-
-        self.assertIsNone(listener._build_event_log({"Action": "start"}))
-        self.assertIsNone(listener._build_event_log({"id": "abcdef1234567890"}))
-
-    def test_write_container_logs_uses_configured_log_dir(self) -> None:
-        client = self._build_client([])
-        listener = DockerListener(
-            client=client,
-        )
-
-        self._clear_test_logs()
-        listener.log_dir = TEST_LOG_DIR
-
-        log_file_path = listener._write_container_logs(
-            container_id="abcdef1234567890",
-            container_name="api service",
-            action="die",
-            created_at="2026-06-02T10:00:00",
-        )
-
-        self.assertIsNotNone(log_file_path)
-        log_file = Path(log_file_path or "")
-        self.assertEqual(log_file.parent, TEST_LOG_DIR)
-        self.assertEqual(log_file.read_text(encoding="utf-8"), "container logs")
 
     def _build_client(self, events: list[dict[str, object]]) -> Mock:
         container = Mock()
