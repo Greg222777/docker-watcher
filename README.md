@@ -1,22 +1,25 @@
-# 🐳 Docker Watcher
+# Docker Watcher
 
-Docker Watcher monitors Docker container events, stores them locally in SQLite, and can send Telegram notifications when events happen.
+Docker Watcher monitors Docker container events, stores them locally in SQLite,
+captures recent container logs, and can send Telegram notifications when watched
+events happen.
 
-## ✨ Features
+## Features
 
-- 📦 Watches Docker container events
-- 💾 Stores event history locally
-- 📣 Sends Telegram notifications
-- 🌐 Provides a lightweight web UI
-- 🐋 Runs with Docker Compose
+- Watches Docker container events.
+- Stores event history locally in SQLite.
+- Captures recent container logs for recorded events.
+- Sends optional Telegram notifications.
+- Provides a Flask web UI.
+- Runs with Docker Compose.
 
-## 📋 Requirements
+## Requirements
 
 - Docker
 - Docker Compose
 - A Telegram bot token and chat ID if you want notifications
 
-## 🚀 Installation With Docker
+## Installation With Docker
 
 Clone the project:
 
@@ -46,8 +49,8 @@ services:
 
 Replace:
 
-- `your_bot_token_here` with your Telegram bot token
-- `your_chat_id_here` with the Telegram chat ID that should receive notifications
+- `your_bot_token_here` with your Telegram bot token.
+- `your_chat_id_here` with the Telegram chat ID that should receive notifications.
 
 Start Docker Watcher:
 
@@ -55,7 +58,7 @@ Start Docker Watcher:
 docker compose up
 ```
 
-Open the web UI:
+Open the Flask web UI:
 
 ```text
 http://localhost:8000
@@ -67,15 +70,45 @@ The SQLite database and captured container logs are stored locally in:
 ./data
 ```
 
-Telegram is optional. If the token or chat ID is missing, Docker Watcher will still run, but notifications will not be sent.
+Telegram is optional. If the token or chat ID is missing, Docker Watcher will
+still run, but notifications will not be sent.
 
-## Monitoring options
+## Local Development
 
-Docker Watcher listens to Docker container events and only records/sends notifications for the actions selected in the web UI options.
+Install Python dependencies:
 
-The selection is stored in SQLite, so it is preserved when Docker Watcher restarts.
+```bash
+pip install -r requirements.txt
+```
 
-By default, Docker Watcher monitors abnormal or operationally important container actions:
+Run the application:
+
+```bash
+python -m app.main
+```
+
+Run tests:
+
+```bash
+python -m unittest discover
+```
+
+Preview the Flask web UI with mock data:
+
+```bash
+python scripts/preview_web.py
+```
+
+## Monitoring Options
+
+Docker Watcher listens to Docker container events and only records or sends
+notifications for the actions selected in the web UI options.
+
+The selection is stored in SQLite, so it is preserved when Docker Watcher
+restarts.
+
+By default, Docker Watcher monitors abnormal or operationally important
+container actions:
 
 ```text
 destroy
@@ -89,7 +122,8 @@ restart
 stop
 ```
 
-Use the official Docker event documentation to decide what matters for your setup:
+Use the official Docker event documentation to decide what matters for your
+setup:
 
 ```text
 https://docs.docker.com/reference/cli/docker/system/events/

@@ -1,6 +1,10 @@
 import os
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT_DIR))
 
 from app import database
 from app.models import EventLog
@@ -31,8 +35,10 @@ def seed_mock_data() -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
     database.event_log_repository.db_path = str(DB_PATH)
-    database.init_db()
-    database.delete_all_events()
+    database.monitored_event_action_repository.db_path = str(DB_PATH)
+    database.event_log_repository.init_db()
+    database.monitored_event_action_repository.init_db()
+    database.event_log_repository.delete_all()
     clear_logs()
 
     now = datetime.now().replace(microsecond=0)
@@ -85,7 +91,7 @@ def seed_mock_data() -> None:
     ]
 
     for event in events:
-        database.save_event(event)
+        database.event_log_repository.save(event)
 
 
 def build_event(
