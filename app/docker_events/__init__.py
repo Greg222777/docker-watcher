@@ -1,10 +1,9 @@
 from app.docker_events.event_log_builder import DockerEventLogBuilder
-from app.docker_events.log_collector import DockerLogCollector
-from app.docker_events.types import DockerClient, DockerEvent
+from app.docker_events.log_writer import ContainerLogWriter
+from app.docker_events.types import DockerEvent
 
 __all__ = [
-    "DockerClient",
+    "ContainerLogWriter",
     "DockerEvent",
     "DockerEventLogBuilder",
-    "DockerLogCollector",
 ]

@@ -16,7 +16,7 @@ LOG_DIR = Path("/data/logs")
 LOG_TAIL_LINES = 200
 
 
-class DockerLogCollector:
+class ContainerLogWriter:
     def __init__(
         self,
         client: object,
