@@ -54,11 +54,3 @@ class TelegramNotifier:
 
 
 telegram_notifier = TelegramNotifier()
-
-
-def send_telegram_message(message: str) -> None:
-    telegram_notifier.send_message(message)
-
-
-def send_event_log(event: EventLog) -> None:
-    telegram_notifier.send_event_log(event)

@@ -4,11 +4,11 @@ from typing import Any, Optional
 import docker
 from docker.errors import DockerException
 
-from app.database import save_event
+from app.database import save_event, select_monitored_event_actions
 from app.docker_events import ContainerLogWriter, DockerEvent, DockerEventLogBuilder
 from app.docker_events.log_writer import LOG_DIR
 from app.models import DockerEventAction, EventLog
-from app.telegram_notifier import send_event_log
+from app.telegram_notifier import telegram_notifier
 
 
 class DockerListener:
@@ -48,7 +48,7 @@ class DockerListener:
         )
 
         save_event(event_log)
-        send_event_log(event_log)
+        telegram_notifier.send_event_log(event_log)
 
     def _should_handle(self, event_log: EventLog) -> bool:
         watched_actions = self._get_watched_actions()
@@ -66,8 +66,6 @@ class DockerListener:
     def _get_watched_actions(self) -> Optional[set[str]]:
         if self.watched_actions is not None:
             return self.watched_actions
-
-        from app.database import select_monitored_event_actions
 
         return {
             action.value

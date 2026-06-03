@@ -61,7 +61,9 @@ class DockerListenerTest(unittest.TestCase):
 
         with (
             patch("app.docker_listener.save_event") as save_event,
-            patch("app.docker_listener.send_event_log") as send_event_log,
+            patch(
+                "app.docker_listener.telegram_notifier.send_event_log"
+            ) as send_event_log,
         ):
             listener.listen()
 
@@ -93,7 +95,9 @@ class DockerListenerTest(unittest.TestCase):
 
         with (
             patch("app.docker_listener.save_event") as save_event,
-            patch("app.docker_listener.send_event_log") as send_event_log,
+            patch(
+                "app.docker_listener.telegram_notifier.send_event_log"
+            ) as send_event_log,
         ):
             listener.listen()
 
