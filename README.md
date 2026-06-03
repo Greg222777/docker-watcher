@@ -17,9 +17,6 @@ events happen.
 
 - Docker
 - Docker Compose
-- Python dependencies from `requirements.txt` for local development:
-  - `docker`
-  - `Flask`
 - A Telegram bot token and chat ID if you want notifications
 
 ## Installation With Docker
