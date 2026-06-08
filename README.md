@@ -33,6 +33,7 @@ services:
       - TELEGRAM_BOT_TOKEN=your_bot_token_here
       - TELEGRAM_CHAT_ID=your_chat_id_here
       - WEB_PORT=8000
+      - DATA_DIR=/data
     ports:
       - "8000:8000"
     volumes:
@@ -51,11 +52,12 @@ Open the Flask web UI:
 http://localhost:8000
 ```
 
-The SQLite database and captured container logs are stored locally in:
+By default, Docker Watcher stores the SQLite database and captured container
+logs in `/data` inside the container. In the Docker Compose example above, that
+directory is mounted to `./data` on the host machine.
 
-```text
-./data
-```
+You can change the internal storage directory with `DATA_DIR` if you need a
+different path.
 
 Telegram is optional. If the token or chat ID is missing, Docker Watcher will
 still run, but notifications will not be sent.

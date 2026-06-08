@@ -2,6 +2,8 @@ from pathlib import Path
 import re
 from typing import Optional
 
+from app.config import LOG_DIR
+
 try:
     from docker.errors import APIError, NotFound
 except ModuleNotFoundError:
@@ -12,7 +14,6 @@ except ModuleNotFoundError:
         pass
 
 
-LOG_DIR = Path("/data/logs")
 LOG_TAIL_LINES = 200
 
 

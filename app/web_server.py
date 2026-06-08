@@ -5,12 +5,12 @@ from threading import Thread
 
 from flask import Flask, abort, redirect, render_template, request, send_file
 
+from app.config import LOG_DIR
 from app.database import event_log_repository, monitored_event_action_repository
 from app.models import DockerEventAction, EventLog, WATCHED_DOCKER_ACTIONS
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
-LOG_DIR = Path("/data/logs").resolve()
 
 app = Flask(__name__)
 

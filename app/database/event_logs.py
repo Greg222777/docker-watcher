@@ -1,15 +1,13 @@
 from contextlib import closing
 import sqlite3
 
+from app.config import DB_PATH
 from app.models import EventLog
 
 
-DB_PATH = "/data/docker_events.db"
-
-
 class EventLogRepository:
-    def __init__(self, db_path: str = DB_PATH) -> None:
-        self.db_path = db_path
+    def __init__(self, db_path: str | None = None) -> None:
+        self.db_path = str(db_path or DB_PATH)
 
     def init_db(self) -> None:
         """
