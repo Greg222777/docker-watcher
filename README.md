@@ -27,7 +27,7 @@ Create a `docker-compose.yml` file:
 ```yaml
 services:
   dockerwatcher:
-    image: greg222777/docker-watcher:latest
+    image: gregorynowik/docker-watcher:latest
     container_name: dockerwatcher
     restart: unless-stopped
     environment:

@@ -13,6 +13,7 @@ from app.telegram_notifier import telegram_notifier
 
 
 logger = logging.getLogger(__name__)
+DOCKER_SOCKET_PATH = Path("/var/run/docker.sock")
 
 
 class DockerListener:
@@ -34,6 +35,7 @@ class DockerListener:
             decode=True,
             filters={"type": "container"}
         ):
+            logger.info("RAW DOCKER EVENT: %s", event)
             event_log = self.event_log_builder.build(event)
 
             if event_log is None:
@@ -71,6 +73,33 @@ class DockerListener:
 
 def listen_to_docker_events() -> None:
     try:
-        DockerListener().listen()
+        logger.info("Preparing Docker event listener.")
+        _log_docker_socket_state()
+        listener = DockerListener()
+        logger.info("Docker event listener created; entering event loop.")
+        listener.listen()
     except DockerException as error:
         logger.error("Could not listen to Docker events: %s", error)
+
+
+def _log_docker_socket_state(socket_path: Path = DOCKER_SOCKET_PATH) -> None:
+    try:
+        if not socket_path.exists():
+            logger.warning(
+                "Docker socket not found at %s. Mount "
+                "/var/run/docker.sock:/var/run/docker.sock in Docker Compose.",
+                socket_path,
+            )
+            return
+
+        socket_stat = socket_path.stat()
+    except OSError as error:
+        logger.warning("Could not inspect Docker socket at %s: %s", socket_path, error)
+        return
+
+    logger.info(
+        "Docker socket found at %s (socket=%s, mode=%s).",
+        socket_path,
+        socket_path.is_socket(),
+        oct(socket_stat.st_mode & 0o777),
+    )
