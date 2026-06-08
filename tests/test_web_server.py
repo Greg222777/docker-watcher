@@ -124,7 +124,8 @@ def test_events_page_paginates_and_preserves_filters(web_client) -> None:
         response = web_client.get("/?container=api&event=die&page=2")
 
     assert response.status_code == 200
-    assert b"Page 2 of 38" in response.data
+    total_pages = (75 + web_server.EVENTS_PER_PAGE - 1) // web_server.EVENTS_PER_PAGE
+    assert f"Page 2 of {total_pages}".encode() in response.data
     assert b"Previous" in response.data
     assert b"container=api" in response.data
     assert b"event=die" in response.data
