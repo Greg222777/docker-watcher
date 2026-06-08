@@ -40,6 +40,7 @@ def test_listen_handles_valid_container_event(docker_client, test_log_dir) -> No
     assert handled_event.action == "die"
     assert handled_event.exit_code == "1"
     assert handled_event.log_file_path is not None
+    client.containers.get.assert_called_once_with("abcdef1234567890")
     assert send_event_log.call_args.args[0] is handled_event
 
 
@@ -67,6 +68,7 @@ def test_listen_ignores_unwatched_actions(docker_client, test_log_dir) -> None:
 
     save_event.assert_not_called()
     send_event_log.assert_not_called()
+    client.containers.get.assert_not_called()
 
 
 def test_should_handle_accepts_documented_event_action_enum() -> None:

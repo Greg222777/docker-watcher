@@ -21,7 +21,7 @@ class DockerListener:
         self.client = client or docker.from_env()
         self.watched_docker_actions = watched_docker_actions
         self.log_writer = ContainerLogWriter(self.client, log_dir=log_dir)
-        self.event_log_builder = DockerEventLogBuilder(self.log_writer)
+        self.event_log_builder = DockerEventLogBuilder()
 
     def listen(self) -> None:
         print("Docker Watcher is listening for container events...")
@@ -46,6 +46,7 @@ class DockerListener:
             f"{event_log.container_id[:12]}"
         )
 
+        self.log_writer.write_event_log(event_log)
         event_log_repository.save(event_log)
         telegram_notifier.send_event_log(event_log)
 

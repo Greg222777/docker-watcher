@@ -1,15 +1,11 @@
 from datetime import datetime
 from typing import Optional
 
-from app.docker_events.log_writer import ContainerLogWriter
 from app.docker_events.types import DockerEvent
 from app.models import EventLog
 
 
 class DockerEventLogBuilder:
-    def __init__(self, log_writer: ContainerLogWriter) -> None:
-        self.log_writer = log_writer
-
     def build(self, event: DockerEvent) -> Optional[EventLog]:
         action = event.get("Action") or event.get("status")
         container_id = event.get("id")
@@ -26,12 +22,6 @@ class DockerEventLogBuilder:
             container_id=container_id,
             action=action,
             exit_code=self.extract_exit_code(attributes),
-            log_file_path=self.log_writer.write_container_logs(
-                container_id=container_id,
-                container_name=container_name,
-                action=action,
-                created_at=created_at,
-            ),
             created_at=created_at,
         )
 

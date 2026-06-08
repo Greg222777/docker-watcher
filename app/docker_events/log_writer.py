@@ -3,6 +3,7 @@ import re
 from typing import Optional
 
 from app.config import LOG_DIR
+from app.models import EventLog
 
 try:
     from docker.errors import APIError, NotFound
@@ -28,7 +29,15 @@ class ContainerLogWriter:
         self.log_dir = log_dir
         self.tail_lines = tail_lines
 
-    def write_container_logs(
+    def write_event_log(self, event_log: EventLog) -> None:
+        event_log.log_file_path = self._write_container_logs(
+            container_id=event_log.container_id,
+            container_name=event_log.container_name,
+            action=event_log.action,
+            created_at=event_log.created_at,
+        )
+
+    def _write_container_logs(
         self,
         container_id: str,
         container_name: str,
@@ -48,7 +57,7 @@ class ContainerLogWriter:
         try:
             self.log_dir.mkdir(parents=True, exist_ok=True)
 
-            log_file_path = self.log_dir / self.build_log_filename(
+            log_file_path = self.log_dir / self._build_log_filename(
                 container_name=container_name,
                 container_id=container_id,
                 action=action,
@@ -65,18 +74,18 @@ class ContainerLogWriter:
 
         return str(log_file_path)
 
-    def build_log_filename(
+    def _build_log_filename(
         self,
         container_name: str,
         container_id: str,
         action: str,
         created_at: str
     ) -> str:
-        safe_name = self.sanitize_filename_part(container_name)
-        safe_action = self.sanitize_filename_part(action)
-        safe_timestamp = self.sanitize_filename_part(created_at)
+        safe_name = self._sanitize_filename_part(container_name)
+        safe_action = self._sanitize_filename_part(action)
+        safe_timestamp = self._sanitize_filename_part(created_at)
 
         return f"{safe_timestamp}_{safe_name}_{safe_action}_{container_id[:12]}.txt"
 
-    def sanitize_filename_part(self, value: str) -> str:
+    def _sanitize_filename_part(self, value: str) -> str:
         return re.sub(r"[^a-zA-Z0-9_.-]+", "-", value).strip("-") or "unknown"
