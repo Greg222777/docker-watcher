@@ -22,13 +22,21 @@ def test_events_page_renders_events(web_client) -> None:
     )
 
     with (
-        patch.object(web_server.event_log_repository, "select_all") as select_all,
+        patch.object(
+            web_server.event_log_repository,
+            "count_filtered",
+            return_value=1,
+        ),
+        patch.object(
+            web_server.event_log_repository,
+            "select_filtered",
+            return_value=[event],
+        ) as select_filtered,
         patch.object(
             web_server.monitored_event_action_repository,
             "select_all",
         ) as select_monitored_actions,
     ):
-        select_all.return_value = [event]
         select_monitored_actions.return_value = {DockerEventAction.DIE}
 
         response = web_client.get("/")
@@ -37,32 +45,40 @@ def test_events_page_renders_events(web_client) -> None:
     assert b"Docker Watcher" in response.data
     assert b"api" in response.data
     assert b"abcdef123456" in response.data
+    select_filtered.assert_called_once_with(
+        start_timestamp="",
+        end_timestamp="",
+        container_filter="",
+        action_filter="",
+        limit=web_server.EVENTS_PER_PAGE,
+        offset=0,
+    )
 
 
 def test_events_page_filters_by_event_action(web_client) -> None:
-    events = [
-        EventLog(
-            id=1,
-            container_name="api",
-            container_id="abcdef1234567890",
-            action="die",
-        ),
-        EventLog(
-            id=2,
-            container_name="worker",
-            container_id="1234567890abcdef",
-            action="start",
-        ),
-    ]
+    event = EventLog(
+        id=1,
+        container_name="api",
+        container_id="abcdef1234567890",
+        action="die",
+    )
 
     with (
-        patch.object(web_server.event_log_repository, "select_all") as select_all,
+        patch.object(
+            web_server.event_log_repository,
+            "count_filtered",
+            return_value=1,
+        ),
+        patch.object(
+            web_server.event_log_repository,
+            "select_filtered",
+            return_value=[event],
+        ) as select_filtered,
         patch.object(
             web_server.monitored_event_action_repository,
             "select_all",
         ) as select_monitored_actions,
     ):
-        select_all.return_value = events
         select_monitored_actions.return_value = {DockerEventAction.DIE}
 
         response = web_client.get("/?event=die")
@@ -70,29 +86,56 @@ def test_events_page_filters_by_event_action(web_client) -> None:
     assert response.status_code == 200
     assert b"api" in response.data
     assert b"worker" not in response.data
-
-
-def test_event_filter_normalizes_health_status_actions() -> None:
-    events = [
-        EventLog(
-            container_name="api",
-            container_id="abcdef1234567890",
-            action="health_status: healthy",
-        ),
-        EventLog(
-            container_name="worker",
-            container_id="1234567890abcdef",
-            action="die",
-        ),
-    ]
-
-    filtered_events = web_server._filter_events(
-        events=events,
+    select_filtered.assert_called_once_with(
+        start_timestamp="",
+        end_timestamp="",
         container_filter="",
-        event_filter="health_status",
+        action_filter="die",
+        limit=web_server.EVENTS_PER_PAGE,
+        offset=0,
     )
 
-    assert [event.container_name for event in filtered_events] == ["api"]
+
+def test_events_page_paginates_and_preserves_filters(web_client) -> None:
+    event = EventLog(
+        id=51,
+        container_name="api",
+        container_id="abcdef1234567890",
+        action="die",
+    )
+
+    with (
+        patch.object(
+            web_server.event_log_repository,
+            "count_filtered",
+            return_value=75,
+        ),
+        patch.object(
+            web_server.event_log_repository,
+            "select_filtered",
+            return_value=[event],
+        ) as select_filtered,
+        patch.object(
+            web_server.monitored_event_action_repository,
+            "select_all",
+            return_value={DockerEventAction.DIE},
+        ),
+    ):
+        response = web_client.get("/?container=api&event=die&page=2")
+
+    assert response.status_code == 200
+    assert b"Page 2 of 38" in response.data
+    assert b"Previous" in response.data
+    assert b"container=api" in response.data
+    assert b"event=die" in response.data
+    select_filtered.assert_called_once_with(
+        start_timestamp="",
+        end_timestamp="",
+        container_filter="api",
+        action_filter="die",
+        limit=web_server.EVENTS_PER_PAGE,
+        offset=web_server.EVENTS_PER_PAGE,
+    )
 
 
 def test_log_file_serves_files_from_log_dir(web_client, test_log_dir) -> None:

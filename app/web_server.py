@@ -3,15 +3,17 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from threading import Thread
+from urllib.parse import urlencode
 
 from flask import Flask, abort, redirect, render_template, request, send_file
 
 from app.config import LOG_DIR
 from app.database import event_log_repository, monitored_event_action_repository
-from app.models import DockerEventAction, EventLog, WATCHED_DOCKER_ACTIONS
+from app.models import DockerEventAction, WATCHED_DOCKER_ACTIONS
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
+EVENTS_PER_PAGE = 2
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -29,8 +31,27 @@ def events_page() -> str:
     event_filter = request.args.get("event", "").strip()
     start_filter = request.args.get("start", "").strip()
     end_filter = request.args.get("end", "").strip()
-    events = _select_events(start_filter, end_filter)
-    events = _filter_events(events, container_filter, event_filter)
+    page = _positive_int(request.args.get("page"), default=1)
+    start_timestamp = _datetime_local_to_iso(start_filter)
+    end_timestamp = _datetime_local_to_iso(end_filter)
+    selected_action = DockerEventAction.from_raw(event_filter)
+    action_filter = selected_action.value if selected_action else ""
+    total_events = event_log_repository.count_filtered(
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+        container_filter=container_filter,
+        action_filter=action_filter,
+    )
+    total_pages = max(1, (total_events + EVENTS_PER_PAGE - 1) // EVENTS_PER_PAGE)
+    page = min(page, total_pages)
+    events = event_log_repository.select_filtered(
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+        container_filter=container_filter,
+        action_filter=action_filter,
+        limit=EVENTS_PER_PAGE,
+        offset=(page - 1) * EVENTS_PER_PAGE,
+    )
 
     return render_template(
         "events.html",
@@ -41,7 +62,12 @@ def events_page() -> str:
         event_filter=event_filter,
         events=events,
         monitored_actions=monitored_event_action_repository.select_all(),
+        page=page,
+        page_url=_page_url,
+        per_page=EVENTS_PER_PAGE,
         start_filter=start_filter,
+        total_events=total_events,
+        total_pages=total_pages,
     )
 
 
@@ -81,63 +107,11 @@ def save_monitoring_options():
     return redirect(_safe_redirect_path(request.form.get("redirect_to", "/")))
 
 
-def _select_events(start_filter: str, end_filter: str) -> list[EventLog]:
-    start_timestamp = _datetime_local_to_iso(start_filter)
-    end_timestamp = _datetime_local_to_iso(end_filter)
-
-    if start_timestamp or end_timestamp:
-        return event_log_repository.select_between(
-            start_timestamp or "0001-01-01T00:00:00",
-            end_timestamp or "9999-12-31T23:59:59",
-        )
-
-    return event_log_repository.select_all()
-
-
 def _datetime_local_to_iso(value: str) -> str:
     if not value:
         return ""
 
     return value if "T" in value else value.replace(" ", "T")
-
-
-def _filter_events(
-    events: list[EventLog],
-    container_filter: str,
-    event_filter: str,
-) -> list[EventLog]:
-    selected_action = DockerEventAction.from_raw(event_filter)
-
-    if not container_filter and selected_action is None:
-        return events
-
-    normalized_filter = container_filter.lower()
-
-    return [
-        event for event in events
-        if _matches_container_filter(event, normalized_filter)
-        and _matches_event_filter(event, selected_action)
-    ]
-
-
-def _matches_container_filter(event: EventLog, container_filter: str) -> bool:
-    if not container_filter:
-        return True
-
-    return (
-        container_filter in event.container_name.lower()
-        or container_filter in event.container_id.lower()
-    )
-
-
-def _matches_event_filter(
-    event: EventLog,
-    selected_action: DockerEventAction | None,
-) -> bool:
-    if selected_action is None:
-        return True
-
-    return selected_action.matches(event.action)
 
 
 def _is_safe_log_path(log_path: Path) -> bool:
@@ -150,6 +124,21 @@ def _current_path() -> str:
 
 def _safe_redirect_path(path: str) -> str:
     return path if path.startswith("/") and not path.startswith("//") else "/"
+
+
+def _positive_int(value: str | None, default: int) -> int:
+    try:
+        parsed_value = int(value or "")
+    except ValueError:
+        return default
+
+    return parsed_value if parsed_value > 0 else default
+
+
+def _page_url(page: int) -> str:
+    args = request.args.to_dict()
+    args["page"] = str(page)
+    return f"{request.path}?{urlencode(args)}"
 
 
 def run_web_server() -> None:

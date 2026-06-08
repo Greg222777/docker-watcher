@@ -168,6 +168,21 @@
             text-align: center;
         }
 
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .pagination-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
         .modal {
             display: none;
             position: fixed;
@@ -232,7 +247,7 @@
 <body>
     <header>
         <h1>Docker Watcher</h1>
-        <p class="subtitle">{{ events|length }} recorded event(s).</p>
+        <p class="subtitle">{{ total_events }} recorded event(s).</p>
     </header>
     <main>
         <div class="toolbar">
@@ -324,6 +339,19 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        <div class="pagination">
+            <span class="muted">
+                Page {{ page }} of {{ total_pages }} · {{ per_page }} per page
+            </span>
+            <div class="pagination-actions">
+                {% if page > 1 %}
+                    <a class="button" href="{{ page_url(page - 1) }}">Previous</a>
+                {% endif %}
+                {% if page < total_pages %}
+                    <a class="button" href="{{ page_url(page + 1) }}">Next</a>
+                {% endif %}
+            </div>
         </div>
     </main>
     <div class="modal" id="options">

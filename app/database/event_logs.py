@@ -87,6 +87,65 @@ class EventLogRepository:
 
             return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
 
+    def select_filtered(
+        self,
+        start_timestamp: str,
+        end_timestamp: str,
+        container_filter: str,
+        action_filter: str,
+        limit: int,
+        offset: int,
+    ) -> list[EventLog]:
+        """
+        Retrieve a filtered page of events ordered by creation date descending.
+        """
+        where_clause, params = self._build_filter_clause(
+            start_timestamp=start_timestamp,
+            end_timestamp=end_timestamp,
+            container_filter=container_filter,
+            action_filter=action_filter,
+        )
+
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            cursor = conn.execute(f"""
+                SELECT *
+                FROM container_events
+                {where_clause}
+                ORDER BY created_at DESC
+                LIMIT ?
+                OFFSET ?
+            """, [*params, limit, offset])
+
+            return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
+
+    def count_filtered(
+        self,
+        start_timestamp: str,
+        end_timestamp: str,
+        container_filter: str,
+        action_filter: str,
+    ) -> int:
+        """
+        Count events matching the same filters used for paginated retrieval.
+        """
+        where_clause, params = self._build_filter_clause(
+            start_timestamp=start_timestamp,
+            end_timestamp=end_timestamp,
+            container_filter=container_filter,
+            action_filter=action_filter,
+        )
+
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            cursor = conn.execute(f"""
+                SELECT COUNT(*)
+                FROM container_events
+                {where_clause}
+            """, params)
+
+            return int(cursor.fetchone()[0])
+
     def select_all(self) -> list[EventLog]:
         """
         Retrieve all events ordered by creation date descending.
@@ -101,3 +160,40 @@ class EventLogRepository:
             """)
 
             return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
+
+    def _build_filter_clause(
+        self,
+        start_timestamp: str,
+        end_timestamp: str,
+        container_filter: str,
+        action_filter: str,
+    ) -> tuple[str, list[str]]:
+        clauses = []
+        params = []
+
+        if start_timestamp:
+            clauses.append("created_at >= ?")
+            params.append(start_timestamp)
+
+        if end_timestamp:
+            clauses.append("created_at <= ?")
+            params.append(end_timestamp)
+
+        if container_filter:
+            clauses.append("""
+                (
+                    LOWER(container_name) LIKE ?
+                    OR LOWER(container_id) LIKE ?
+                )
+            """)
+            normalized_filter = f"%{container_filter.lower()}%"
+            params.extend([normalized_filter, normalized_filter])
+
+        if action_filter:
+            clauses.append("(action = ? OR action LIKE ?)")
+            params.extend([action_filter, f"{action_filter}:%"])
+
+        if not clauses:
+            return "", params
+
+        return f"WHERE {' AND '.join(clauses)}", params
