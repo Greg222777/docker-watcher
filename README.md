@@ -1,25 +1,26 @@
-# Docker Watcher
+# Docker Watcher 🐳
 
 Docker Watcher monitors Docker container events, stores them locally in SQLite,
 captures recent container logs, and can send Telegram notifications when watched
 events happen.
 
-## Features
+## Features ✨
 
 - Watches Docker container events.
 - Stores event history locally in SQLite.
 - Captures recent container logs for recorded events.
 - Sends optional Telegram notifications.
 - Provides a Flask web UI.
+- Supports configurable storage and log level.
 - Runs with Docker Compose.
 
-## Requirements
+## Requirements 📦
 
 - Docker
 - Docker Compose
 - A Telegram bot token and chat ID if you want notifications
 
-## Installation With Docker
+## Installation With Docker 🚀
 
 Create a `docker-compose.yml` file:
 
@@ -42,28 +43,45 @@ services:
       - ./data:/data
 ```
 
-Replace:
+Then start Docker Watcher:
 
-- `your_bot_token_here` with your Telegram bot token.
-- `your_chat_id_here` with the Telegram chat ID that should receive notifications.
+```sh
+docker compose up -d
+```
 
-Open the Flask web UI:
+Open the web UI:
 
 ```text
 http://localhost:8000
 ```
 
-By default, Docker Watcher stores the SQLite database and captured container
-logs in `/data` inside the container. In the Docker Compose example above, that
-directory is mounted to `./data` on the host machine.
+## Configuration ⚙️
 
-You can change the internal storage directory with `DATA_DIR` if you need a
-different path.
+| Variable | Default | Description |
+| --- | --- | --- |
+| `TELEGRAM_BOT_TOKEN` | empty | Telegram bot token. Leave empty to disable notifications. |
+| `TELEGRAM_CHAT_ID` | empty | Telegram chat ID that should receive notifications. |
+| `WEB_PORT` | `8000` | Port used by the Flask web UI inside the container. |
+| `DATA_DIR` | `/data` | Internal directory used for the SQLite database and captured logs. |
+| `LOG_LEVEL` | `INFO` | Application log level, for example `DEBUG`, `INFO`, `WARNING`, or `ERROR`. |
 
-Telegram is optional. If the token or chat ID is missing, Docker Watcher will
-still run, but notifications will not be sent.
+Telegram is optional. If `TELEGRAM_BOT_TOKEN` or `TELEGRAM_CHAT_ID` is missing,
+Docker Watcher still runs, but notifications are skipped.
 
-## Monitoring Options
+## Storage 💾
+
+Docker Watcher stores the SQLite database and captured container logs in the
+configured `DATA_DIR`.
+
+With the Docker Compose example above, `/data` is mounted to `./data` on the
+host machine:
+
+```yaml
+volumes:
+  - ./data:/data
+```
+
+## Monitoring Options 👀
 
 Docker Watcher listens to Docker container events and only records or sends
 notifications for the actions selected in the web UI options.
