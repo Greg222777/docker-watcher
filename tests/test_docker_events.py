@@ -26,6 +26,31 @@ def test_build_does_not_collect_container_logs(docker_client) -> None:
     client.containers.get.assert_not_called()
 
 
+def test_build_uses_actor_id_when_event_has_no_top_level_id() -> None:
+    builder = DockerEventLogBuilder()
+
+    event_log = builder.build({
+        "Type": "container",
+        "Action": "exec_die",
+        "Actor": {
+            "ID": "d7a5aece1b9b8271f289b7337301d633a75e8851a46209800d72bf0f628b9830",
+            "Attributes": {
+                "name": "filebrowser",
+                "exitCode": "0",
+            },
+        },
+        "time": 1780958204,
+    })
+
+    assert event_log is not None
+    assert event_log.container_name == "filebrowser"
+    assert event_log.container_id == (
+        "d7a5aece1b9b8271f289b7337301d633a75e8851a46209800d72bf0f628b9830"
+    )
+    assert event_log.action == "exec_die"
+    assert event_log.exit_code == "0"
+
+
 def test_write_event_log_uses_configured_log_dir(
     docker_client,
     test_log_dir,

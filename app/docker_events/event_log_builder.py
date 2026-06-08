@@ -8,12 +8,13 @@ from app.models import EventLog
 class DockerEventLogBuilder:
     def build(self, event: DockerEvent) -> Optional[EventLog]:
         action = event.get("Action") or event.get("status")
-        container_id = event.get("id")
+        actor = event.get("Actor", {})
+        container_id = event.get("id") or actor.get("ID")
 
         if not action or not container_id:
             return None
 
-        attributes = event.get("Actor", {}).get("Attributes", {})
+        attributes = actor.get("Attributes", {})
         container_name = attributes.get("name", "unknown")
         created_at = self.extract_created_at(event)
 
