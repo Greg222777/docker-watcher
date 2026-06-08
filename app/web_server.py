@@ -13,7 +13,7 @@ from app.models import DockerEventAction, WATCHED_DOCKER_ACTIONS
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
-EVENTS_PER_PAGE = 2
+EVENTS_PER_PAGE = 50
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
