@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional
 
@@ -9,6 +10,7 @@ from app.models import EventLog
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+logger = logging.getLogger(__name__)
 
 
 class TelegramNotifier:
@@ -25,7 +27,7 @@ class TelegramNotifier:
         Send a message to a Telegram chat.
         """
         if not self.bot_token or not self.chat_id:
-            print("Telegram is not configured.")
+            logger.info("Telegram is not configured.")
             return
 
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
@@ -40,7 +42,7 @@ class TelegramNotifier:
             response = requests.post(url, data=payload, timeout=10)
             response.raise_for_status()
         except RequestException as error:
-            print(f"Could not send Telegram message: {error}")
+            logger.warning("Could not send Telegram message: %s", error)
 
     def send_event_log(self, event: EventLog) -> None:
         """

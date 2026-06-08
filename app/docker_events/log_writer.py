@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 import re
 from typing import Optional
@@ -16,6 +17,7 @@ except ModuleNotFoundError:
 
 
 LOG_TAIL_LINES = 200
+logger = logging.getLogger(__name__)
 
 
 class ContainerLogWriter:
@@ -48,10 +50,17 @@ class ContainerLogWriter:
             container = self.client.containers.get(container_id)
             logs = container.logs(tail=self.tail_lines, timestamps=True)
         except NotFound:
-            print(f"Could not collect logs: container {container_id[:12]} not found.")
+            logger.warning(
+                "Could not collect logs: container %s not found.",
+                container_id[:12],
+            )
             return None
         except APIError as error:
-            print(f"Could not collect logs for {container_id[:12]}: {error}")
+            logger.warning(
+                "Could not collect logs for %s: %s",
+                container_id[:12],
+                error,
+            )
             return None
 
         try:
@@ -69,7 +78,11 @@ class ContainerLogWriter:
                 encoding="utf-8"
             )
         except OSError as error:
-            print(f"Could not write logs for {container_id[:12]}: {error}")
+            logger.error(
+                "Could not write logs for %s: %s",
+                container_id[:12],
+                error,
+            )
             return None
 
         return str(log_file_path)

@@ -34,6 +34,7 @@ services:
       - TELEGRAM_CHAT_ID=your_chat_id_here
       - WEB_PORT=8000
       - DATA_DIR=/data
+      - LOG_LEVEL=INFO
     ports:
       - "8000:8000"
     volumes:

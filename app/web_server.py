@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 from shutil import rmtree
@@ -11,6 +12,7 @@ from app.models import DockerEventAction, EventLog, WATCHED_DOCKER_ACTIONS
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -61,7 +63,7 @@ def delete_all_events():
         if LOG_DIR.exists():
             rmtree(LOG_DIR)
     except OSError as error:
-        print(f"Could not delete log files: {error}")
+        logger.error("Could not delete log files: %s", error)
 
     return redirect("/")
 
@@ -151,7 +153,7 @@ def _safe_redirect_path(path: str) -> str:
 
 
 def run_web_server() -> None:
-    print(f"Docker Watcher web UI is available on port {WEB_PORT}.")
+    logger.info("Docker Watcher web UI is available on port %s.", WEB_PORT)
     app.run(
         host=WEB_HOST,
         port=WEB_PORT,

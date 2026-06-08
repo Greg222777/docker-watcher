@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Any, Optional
 
@@ -9,6 +10,9 @@ from app.docker_events import ContainerLogWriter, DockerEventLogBuilder
 from app.docker_events.log_writer import LOG_DIR
 from app.models import DockerEventAction, EventLog, WatchedDockerActions
 from app.telegram_notifier import telegram_notifier
+
+
+logger = logging.getLogger(__name__)
 
 
 class DockerListener:
@@ -24,7 +28,7 @@ class DockerListener:
         self.event_log_builder = DockerEventLogBuilder()
 
     def listen(self) -> None:
-        print("Docker Watcher is listening for container events...")
+        logger.info("Docker Watcher is listening for container events...")
 
         for event in self.client.events(
             decode=True,
@@ -39,11 +43,11 @@ class DockerListener:
                 self._handle_event_log(event_log)
 
     def _handle_event_log(self, event_log: EventLog) -> None:
-        print(
-            f"Docker event received: "
-            f"{event_log.container_name} "
-            f"{event_log.action} "
-            f"{event_log.container_id[:12]}"
+        logger.info(
+            "Docker event received: %s %s %s",
+            event_log.container_name,
+            event_log.action,
+            event_log.container_id[:12],
         )
 
         self.log_writer.write_event_log(event_log)
@@ -69,4 +73,4 @@ def listen_to_docker_events() -> None:
     try:
         DockerListener().listen()
     except DockerException as error:
-        print(f"Could not listen to Docker events: {error}")
+        logger.error("Could not listen to Docker events: %s", error)
