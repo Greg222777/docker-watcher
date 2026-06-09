@@ -1,0 +1,38 @@
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Container</th>
+                <th>Container ID</th>
+                <th>Action</th>
+                <th>Exit Code</th>
+                <th>Logs</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in events %}
+                <tr>
+                    <td>{{ event.id or "" }}</td>
+                    <td>{{ event.created_at }}</td>
+                    <td>{{ event.container_name }}</td>
+                    <td><code>{{ event.container_id[:12] }}</code></td>
+                    <td>{{ event.action }}</td>
+                    <td>{{ event.exit_code or "" }}</td>
+                    <td>
+                        {% if event.log_file_path %}
+                            <a href="{{ url_for('log_file', filename=event.log_file_path|basename) }}">Open logs</a>
+                        {% else %}
+                            <span class="muted">No log file</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="7" class="empty">No Docker events recorded yet.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

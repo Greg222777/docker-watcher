@@ -1,0 +1,56 @@
+<div class="toolbar">
+    <form class="filter-form" method="get" action="{{ url_for('events_page') }}">
+        <label>
+            Container filter
+            <input
+                type="search"
+                name="container"
+                value="{{ container_filter }}"
+                placeholder="name or container id"
+            >
+        </label>
+        <label>
+            Event
+            <select name="event">
+                <option value="">All events</option>
+                {% for action in actions %}
+                    <option
+                        value="{{ action.value }}"
+                        {% if event_filter == action.value %}selected{% endif %}
+                    >
+                        {{ action.value.replace("_", " ") }}
+                    </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            From
+            <input
+                type="datetime-local"
+                name="start"
+                value="{{ start_filter }}"
+            >
+        </label>
+        <label>
+            To
+            <input
+                type="datetime-local"
+                name="end"
+                value="{{ end_filter }}"
+            >
+        </label>
+        <button class="primary" type="submit">Filter</button>
+        <a class="button" href="{{ current_path }}">Refresh</a>
+        <a class="button" href="{{ url_for('events_page') }}">Clear</a>
+    </form>
+    <div class="filter-form">
+        <a class="button" href="#options">Options</a>
+        <form
+            method="post"
+            action="{{ url_for('delete_all_events') }}"
+            onsubmit="return confirm('Delete all recorded events and log files?')"
+        >
+            <button class="danger" type="submit">Delete all</button>
+        </form>
+    </div>
+</div>

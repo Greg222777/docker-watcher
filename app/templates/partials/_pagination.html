@@ -1,0 +1,13 @@
+<div class="pagination">
+    <span class="muted">
+        Page {{ page }} of {{ total_pages }} &middot; {{ per_page }} per page
+    </span>
+    <div class="pagination-actions">
+        {% if page > 1 %}
+            <a class="button" href="{{ page_url(page - 1) }}">Previous</a>
+        {% endif %}
+        {% if page < total_pages %}
+            <a class="button" href="{{ page_url(page + 1) }}">Next</a>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,30 @@
+<div class="modal" id="options">
+    <form class="modal-panel" method="post" action="{{ url_for('save_monitoring_options') }}">
+        <div class="modal-header">
+            <h2 class="modal-title">Monitoring options</h2>
+            <a class="button" href="{{ current_path }}">Close</a>
+        </div>
+        <div class="options-grid">
+            {% for action in actions %}
+                <label class="checkbox-label">
+                    <input
+                        type="checkbox"
+                        name="actions"
+                        value="{{ action.value }}"
+                        {% if action in monitored_actions %}checked{% endif %}
+                    >
+                    {{ action.value.replace("_", " ") }}
+                </label>
+            {% endfor %}
+        </div>
+        <div class="modal-footer">
+            <input
+                type="hidden"
+                name="redirect_to"
+                value="{{ current_path }}"
+            >
+            <a class="button" href="{{ current_path }}">Cancel</a>
+            <button class="primary" type="submit">Save</button>
+        </div>
+    </form>
+</div>
