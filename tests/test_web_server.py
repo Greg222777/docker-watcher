@@ -153,6 +153,13 @@ def test_log_file_serves_files_from_log_dir(web_client, test_log_dir) -> None:
     response.close()
 
 
+def test_static_css_is_served(web_client) -> None:
+    response = web_client.get("/static/css/events.css")
+
+    assert response.status_code == 200
+    assert b".toolbar" in response.data
+
+
 def test_save_monitoring_options_updates_repository(web_client) -> None:
     with patch.object(
         web_server.monitored_event_action_repository,

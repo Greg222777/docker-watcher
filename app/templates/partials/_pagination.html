@@ -4,10 +4,10 @@
     </span>
     <div class="pagination-actions">
         {% if page > 1 %}
-            <a class="button" href="{{ page_url(page - 1) }}">Previous</a>
+            <a class="button" href="{{ url_for_page(page - 1) }}">Previous</a>
         {% endif %}
         {% if page < total_pages %}
-            <a class="button" href="{{ page_url(page + 1) }}">Next</a>
+            <a class="button" href="{{ url_for_page(page + 1) }}">Next</a>
         {% endif %}
     </div>
 </div>

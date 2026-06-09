@@ -1,11 +1,11 @@
 import logging
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from shutil import rmtree
 from threading import Thread
-from urllib.parse import urlencode
 
-from flask import Flask, abort, redirect, render_template, request, send_file
+from flask import Flask, abort, redirect, render_template, request, send_file, url_for
 
 from app.config import LOG_DIR
 from app.database import event_log_repository, monitored_event_action_repository
@@ -19,6 +19,28 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 
+@dataclass(frozen=True)
+class EventFilters:
+    container: str
+    event: str
+    start: str
+    end: str
+    start_timestamp: str
+    end_timestamp: str
+    action: str
+
+
+@dataclass(frozen=True)
+class Pagination:
+    page: int
+    per_page: int
+    total_pages: int
+
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.per_page
+
+
 @app.template_filter("basename")
 def basename(value: str) -> str:
     return Path(value).name
@@ -27,47 +49,41 @@ def basename(value: str) -> str:
 @app.get("/")
 @app.get("/events")
 def events_page() -> str:
-    container_filter = request.args.get("container", "").strip()
-    event_filter = request.args.get("event", "").strip()
-    start_filter = request.args.get("start", "").strip()
-    end_filter = request.args.get("end", "").strip()
-    page = _positive_int(request.args.get("page"), default=1)
-    start_timestamp = _datetime_local_to_iso(start_filter)
-    end_timestamp = _datetime_local_to_iso(end_filter)
-    selected_action = DockerEventAction.from_raw(event_filter)
-    action_filter = selected_action.value if selected_action else ""
+    filters = _event_filters_from_request()
     total_events = event_log_repository.count_filtered(
-        start_timestamp=start_timestamp,
-        end_timestamp=end_timestamp,
-        container_filter=container_filter,
-        action_filter=action_filter,
+        start_timestamp=filters.start_timestamp,
+        end_timestamp=filters.end_timestamp,
+        container_filter=filters.container,
+        action_filter=filters.action,
     )
-    total_pages = max(1, (total_events + EVENTS_PER_PAGE - 1) // EVENTS_PER_PAGE)
-    page = min(page, total_pages)
+    pagination = _pagination_for(
+        total_events=total_events,
+        requested_page=_positive_int(request.args.get("page"), default=1),
+    )
     events = event_log_repository.select_filtered(
-        start_timestamp=start_timestamp,
-        end_timestamp=end_timestamp,
-        container_filter=container_filter,
-        action_filter=action_filter,
-        limit=EVENTS_PER_PAGE,
-        offset=(page - 1) * EVENTS_PER_PAGE,
+        start_timestamp=filters.start_timestamp,
+        end_timestamp=filters.end_timestamp,
+        container_filter=filters.container,
+        action_filter=filters.action,
+        limit=pagination.per_page,
+        offset=pagination.offset,
     )
 
     return render_template(
         "events.html",
         actions=WATCHED_DOCKER_ACTIONS,
-        container_filter=container_filter,
+        container_filter=filters.container,
         current_path=_current_path(),
-        end_filter=end_filter,
-        event_filter=event_filter,
+        end_filter=filters.end,
+        event_filter=filters.event,
         events=events,
         monitored_actions=monitored_event_action_repository.select_all(),
-        page=page,
-        page_url=_page_url,
-        per_page=EVENTS_PER_PAGE,
-        start_filter=start_filter,
+        page=pagination.page,
+        per_page=pagination.per_page,
+        start_filter=filters.start,
         total_events=total_events,
-        total_pages=total_pages,
+        total_pages=pagination.total_pages,
+        url_for_page=_url_for_page,
     )
 
 
@@ -91,7 +107,7 @@ def delete_all_events():
     except OSError as error:
         logger.error("Could not delete log files: %s", error)
 
-    return redirect("/")
+    return redirect(url_for("events_page"))
 
 
 @app.post("/options/monitoring")
@@ -107,23 +123,30 @@ def save_monitoring_options():
     return redirect(_safe_redirect_path(request.form.get("redirect_to", "/")))
 
 
+# Request parsing and filter normalization
+def _event_filters_from_request() -> EventFilters:
+    container_filter = request.args.get("container", "").strip()
+    event_filter = request.args.get("event", "").strip()
+    start_filter = request.args.get("start", "").strip()
+    end_filter = request.args.get("end", "").strip()
+    selected_action = DockerEventAction.from_raw(event_filter)
+
+    return EventFilters(
+        container=container_filter,
+        event=event_filter,
+        start=start_filter,
+        end=end_filter,
+        start_timestamp=_datetime_local_to_iso(start_filter),
+        end_timestamp=_datetime_local_to_iso(end_filter),
+        action=selected_action.value if selected_action else "",
+    )
+
+
 def _datetime_local_to_iso(value: str) -> str:
     if not value:
         return ""
 
     return value if "T" in value else value.replace(" ", "T")
-
-
-def _is_safe_log_path(log_path: Path) -> bool:
-    return log_path == LOG_DIR or LOG_DIR in log_path.parents
-
-
-def _current_path() -> str:
-    return request.full_path.rstrip("?")
-
-
-def _safe_redirect_path(path: str) -> str:
-    return path if path.startswith("/") and not path.startswith("//") else "/"
 
 
 def _positive_int(value: str | None, default: int) -> int:
@@ -135,10 +158,36 @@ def _positive_int(value: str | None, default: int) -> int:
     return parsed_value if parsed_value > 0 else default
 
 
-def _page_url(page: int) -> str:
+# Pagination
+def _pagination_for(total_events: int, requested_page: int) -> Pagination:
+    total_pages = max(1, (total_events + EVENTS_PER_PAGE - 1) // EVENTS_PER_PAGE)
+
+    return Pagination(
+        page=min(requested_page, total_pages),
+        per_page=EVENTS_PER_PAGE,
+        total_pages=total_pages,
+    )
+
+
+def _url_for_page(page: int) -> str:
     args = request.args.to_dict()
     args["page"] = str(page)
-    return f"{request.path}?{urlencode(args)}"
+    endpoint = request.endpoint or "events_page"
+
+    return url_for(endpoint, **args)
+
+
+# Path safety and redirects
+def _safe_redirect_path(path: str) -> str:
+    return path if path.startswith("/") and not path.startswith("//") else "/"
+
+
+def _is_safe_log_path(log_path: Path) -> bool:
+    return log_path == LOG_DIR or LOG_DIR in log_path.parents
+
+
+def _current_path() -> str:
+    return request.full_path.rstrip("?")
 
 
 def run_web_server() -> None:
