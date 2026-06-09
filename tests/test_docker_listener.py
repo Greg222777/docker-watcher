@@ -25,9 +25,11 @@ def test_listen_handles_valid_container_event(
             }
         },
     }
-    client = docker_client([
-        raw_event,
-    ])
+    client = docker_client(
+        [
+            raw_event,
+        ]
+    )
     listener = DockerListener(
         client=client,
         watched_docker_actions={DockerEventAction.DIE},
@@ -37,9 +39,7 @@ def test_listen_handles_valid_container_event(
     with (
         caplog.at_level(logging.INFO, logger="app.docker_listener"),
         patch("app.docker_listener.event_log_repository.save") as save_event,
-        patch(
-            "app.docker_listener.telegram_notifier.send_event_log"
-        ) as send_event_log,
+        patch("app.docker_listener.telegram_notifier.send_event_log") as send_event_log,
     ):
         listener.listen()
 
@@ -70,9 +70,11 @@ def test_listen_logs_raw_events_before_parsing(
         "id": "abcdef1234567890",
         "Actor": {"Attributes": {"name": "api"}},
     }
-    client = docker_client([
-        raw_event,
-    ])
+    client = docker_client(
+        [
+            raw_event,
+        ]
+    )
     listener = DockerListener(
         client=client,
         watched_docker_actions={DockerEventAction.DIE},
@@ -82,9 +84,7 @@ def test_listen_logs_raw_events_before_parsing(
     with (
         caplog.at_level(logging.INFO, logger="app.docker_listener"),
         patch("app.docker_listener.event_log_repository.save") as save_event,
-        patch(
-            "app.docker_listener.telegram_notifier.send_event_log"
-        ) as send_event_log,
+        patch("app.docker_listener.telegram_notifier.send_event_log") as send_event_log,
     ):
         listener.listen()
 
@@ -94,13 +94,15 @@ def test_listen_logs_raw_events_before_parsing(
 
 
 def test_listen_ignores_unwatched_actions(docker_client, test_log_dir) -> None:
-    client = docker_client([
-        {
-            "Action": "start",
-            "id": "abcdef1234567890",
-            "Actor": {"Attributes": {"name": "api"}},
-        }
-    ])
+    client = docker_client(
+        [
+            {
+                "Action": "start",
+                "id": "abcdef1234567890",
+                "Actor": {"Attributes": {"name": "api"}},
+            }
+        ]
+    )
     listener = DockerListener(
         client=client,
         watched_docker_actions={DockerEventAction.DIE},
@@ -109,9 +111,7 @@ def test_listen_ignores_unwatched_actions(docker_client, test_log_dir) -> None:
 
     with (
         patch("app.docker_listener.event_log_repository.save") as save_event,
-        patch(
-            "app.docker_listener.telegram_notifier.send_event_log"
-        ) as send_event_log,
+        patch("app.docker_listener.telegram_notifier.send_event_log") as send_event_log,
     ):
         listener.listen()
 

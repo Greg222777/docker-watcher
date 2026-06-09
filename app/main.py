@@ -5,7 +5,6 @@ from app.docker_listener import listen_to_docker_events
 from app.logging_config import configure_logging
 from app.web_server import start_web_server
 
-
 logger = logging.getLogger(__name__)
 
 

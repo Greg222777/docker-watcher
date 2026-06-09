@@ -1,5 +1,5 @@
-from contextlib import closing
 import sqlite3
+from contextlib import closing
 
 from app.config import DB_PATH
 from app.models import DEFAULT_MONITORED_EVENT_ACTIONS, DockerEventAction
@@ -30,16 +30,19 @@ class MonitoredEventActionRepository:
                 """).fetchone()[0]
 
                 if existing_count == 0:
-                    conn.executemany("""
+                    conn.executemany(
+                        """
                         INSERT INTO monitored_event_actions (action)
                         VALUES (?)
-                    """, [
-                        (action.value,)
-                        for action in sorted(
-                            DEFAULT_MONITORED_EVENT_ACTIONS,
-                            key=lambda item: item.value,
-                        )
-                    ])
+                    """,
+                        [
+                            (action.value,)
+                            for action in sorted(
+                                DEFAULT_MONITORED_EVENT_ACTIONS,
+                                key=lambda item: item.value,
+                            )
+                        ],
+                    )
 
     def select_all(self) -> set[DockerEventAction]:
         with closing(sqlite3.connect(self.db_path)) as conn:
@@ -59,10 +62,13 @@ class MonitoredEventActionRepository:
         with closing(sqlite3.connect(self.db_path)) as conn:
             with conn:
                 conn.execute("DELETE FROM monitored_event_actions")
-                conn.executemany("""
+                conn.executemany(
+                    """
                     INSERT INTO monitored_event_actions (action)
                     VALUES (?)
-                """, [
-                    (action.value,)
-                    for action in sorted(actions, key=lambda item: item.value)
-                ])
+                """,
+                    [
+                        (action.value,)
+                        for action in sorted(actions, key=lambda item: item.value)
+                    ],
+                )

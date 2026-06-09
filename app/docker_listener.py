@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import docker
 from docker.errors import DockerException
@@ -8,9 +8,8 @@ from docker.errors import DockerException
 from app.database import event_log_repository, monitored_event_action_repository
 from app.docker_events import ContainerLogWriter, DockerEventLogBuilder
 from app.docker_events.log_writer import LOG_DIR
-from app.models import DockerEventAction, EventLog, WatchedDockerActions
+from app.models import EventLog, WatchedDockerActions
 from app.telegram_notifier import telegram_notifier
-
 
 logger = logging.getLogger(__name__)
 DOCKER_SOCKET_PATH = Path("/var/run/docker.sock")
@@ -19,7 +18,7 @@ DOCKER_SOCKET_PATH = Path("/var/run/docker.sock")
 class DockerListener:
     def __init__(
         self,
-        client: Optional[Any] = None,
+        client: Any | None = None,
         watched_docker_actions: WatchedDockerActions = frozenset(),
         log_dir: Path = LOG_DIR,
     ) -> None:
@@ -31,10 +30,7 @@ class DockerListener:
     def listen(self) -> None:
         logger.info("Docker Watcher is listening for container events...")
 
-        for event in self.client.events(
-            decode=True,
-            filters={"type": "container"}
-        ):
+        for event in self.client.events(decode=True, filters={"type": "container"}):
             logger.info("RAW DOCKER EVENT: %s", event)
             event_log = self.event_log_builder.build(event)
 
@@ -60,8 +56,7 @@ class DockerListener:
         watched_docker_actions = self._get_watched_docker_actions()
 
         return any(
-            action.matches(event_log.action)
-            for action in watched_docker_actions
+            action.matches(event_log.action) for action in watched_docker_actions
         )
 
     def _get_watched_docker_actions(self) -> WatchedDockerActions:

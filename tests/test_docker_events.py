@@ -15,11 +15,13 @@ def test_build_does_not_collect_container_logs(docker_client) -> None:
     client = docker_client()
     builder = DockerEventLogBuilder()
 
-    event_log = builder.build({
-        "Action": "start",
-        "id": "abcdef1234567890",
-        "Actor": {"Attributes": {"name": "api"}},
-    })
+    event_log = builder.build(
+        {
+            "Action": "start",
+            "id": "abcdef1234567890",
+            "Actor": {"Attributes": {"name": "api"}},
+        }
+    )
 
     assert event_log is not None
     assert event_log.log_file_path is None
@@ -29,18 +31,20 @@ def test_build_does_not_collect_container_logs(docker_client) -> None:
 def test_build_uses_actor_id_when_event_has_no_top_level_id() -> None:
     builder = DockerEventLogBuilder()
 
-    event_log = builder.build({
-        "Type": "container",
-        "Action": "exec_die",
-        "Actor": {
-            "ID": "d7a5aece1b9b8271f289b7337301d633a75e8851a46209800d72bf0f628b9830",
-            "Attributes": {
-                "name": "filebrowser",
-                "exitCode": "0",
+    event_log = builder.build(
+        {
+            "Type": "container",
+            "Action": "exec_die",
+            "Actor": {
+                "ID": "d7a5aece1b9b8271f289b7337301d633a75e8851a46209800d72bf0f628b9830",
+                "Attributes": {
+                    "name": "filebrowser",
+                    "exitCode": "0",
+                },
             },
-        },
-        "time": 1780958204,
-    })
+            "time": 1780958204,
+        }
+    )
 
     assert event_log is not None
     assert event_log.container_name == "filebrowser"

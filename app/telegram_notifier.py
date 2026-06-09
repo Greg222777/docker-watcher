@@ -1,12 +1,10 @@
 import logging
 import os
-from typing import Optional
 
 import requests
 from requests import RequestException
 
 from app.models import EventLog
-
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -16,8 +14,8 @@ logger = logging.getLogger(__name__)
 class TelegramNotifier:
     def __init__(
         self,
-        bot_token: Optional[str] = TELEGRAM_BOT_TOKEN,
-        chat_id: Optional[str] = TELEGRAM_CHAT_ID
+        bot_token: str | None = TELEGRAM_BOT_TOKEN,
+        chat_id: str | None = TELEGRAM_CHAT_ID,
     ) -> None:
         self.bot_token = bot_token
         self.chat_id = chat_id
@@ -32,11 +30,7 @@ class TelegramNotifier:
 
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
 
-        payload = {
-            "chat_id": self.chat_id,
-            "text": message,
-            "parse_mode": "HTML"
-        }
+        payload = {"chat_id": self.chat_id, "text": message, "parse_mode": "HTML"}
 
         try:
             response = requests.post(url, data=payload, timeout=10)

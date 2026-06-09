@@ -1,5 +1,5 @@
-from contextlib import closing
 import sqlite3
+from contextlib import closing
 
 from app.config import DB_PATH
 from app.models import EventLog
@@ -33,7 +33,8 @@ class EventLogRepository:
         """
         with closing(sqlite3.connect(self.db_path)) as conn:
             with conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO container_events (
                         container_name,
                         container_id,
@@ -43,7 +44,9 @@ class EventLogRepository:
                         created_at
                     )
                     VALUES (?, ?, ?, ?, ?, ?)
-                """, event.to_insert_values())
+                """,
+                    event.to_insert_values(),
+                )
 
     def delete(self, event_id: int) -> None:
         """
@@ -51,10 +54,13 @@ class EventLogRepository:
         """
         with closing(sqlite3.connect(self.db_path)) as conn:
             with conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     DELETE FROM container_events
                     WHERE id = ?
-                """, (event_id,))
+                """,
+                    (event_id,),
+                )
 
     def delete_all(self) -> None:
         """
@@ -65,9 +71,7 @@ class EventLogRepository:
                 conn.execute("DELETE FROM container_events")
 
     def select_between(
-        self,
-        start_timestamp: str,
-        end_timestamp: str
+        self, start_timestamp: str, end_timestamp: str
     ) -> list[EventLog]:
         """
         Retrieve events between two ISO timestamps.
@@ -75,15 +79,15 @@ class EventLogRepository:
         with closing(sqlite3.connect(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
 
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT *
                 FROM container_events
                 WHERE created_at BETWEEN ? AND ?
                 ORDER BY created_at DESC
-            """, (
-                start_timestamp,
-                end_timestamp
-            ))
+            """,
+                (start_timestamp, end_timestamp),
+            )
 
             return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
 
@@ -109,14 +113,17 @@ class EventLogRepository:
         with closing(sqlite3.connect(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
 
-            cursor = conn.execute(f"""
+            cursor = conn.execute(
+                f"""
                 SELECT *
                 FROM container_events
                 {where_clause}
                 ORDER BY created_at DESC
                 LIMIT ?
                 OFFSET ?
-            """, [*params, limit, offset])
+            """,
+                [*params, limit, offset],
+            )
 
             return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
 
@@ -138,11 +145,14 @@ class EventLogRepository:
         )
 
         with closing(sqlite3.connect(self.db_path)) as conn:
-            cursor = conn.execute(f"""
+            cursor = conn.execute(
+                f"""
                 SELECT COUNT(*)
                 FROM container_events
                 {where_clause}
-            """, params)
+            """,
+                params,
+            )
 
             return int(cursor.fetchone()[0])
 

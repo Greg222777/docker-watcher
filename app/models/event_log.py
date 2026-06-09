@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from html import escape
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -9,10 +9,10 @@ class EventLog:
     container_name: str
     container_id: str
     action: str
-    exit_code: Optional[str] = None
-    log_file_path: Optional[str] = None
+    exit_code: str | None = None
+    log_file_path: str | None = None
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    id: Optional[int] = None
+    id: int | None = None
 
     @classmethod
     def from_row(cls, row: dict[str, Any]) -> "EventLog":
@@ -26,7 +26,7 @@ class EventLog:
             created_at=row["created_at"],
         )
 
-    def to_insert_values(self) -> tuple[str, str, str, Optional[str], Optional[str], str]:
+    def to_insert_values(self) -> tuple[str, str, str, str | None, str | None, str]:
         return (
             self.container_name,
             self.container_id,

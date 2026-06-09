@@ -6,11 +6,10 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 
-from app import database
-from app.models import EventLog
-from app.web_server import run_web_server
-import app.web_server as web_server
-
+import app.web_server as web_server  # noqa: E402
+from app import database  # noqa: E402
+from app.models import EventLog  # noqa: E402
+from app.web_server import run_web_server  # noqa: E402
 
 PREVIEW_DIR = Path("data/mock-preview").resolve()
 DB_PATH = PREVIEW_DIR / "docker_events.db"
@@ -107,13 +106,15 @@ def build_event(
     created_at_value = created_at.isoformat()
 
     if log_body is not None:
-        log_file_path = str(write_log_file(
-            id=id,
-            container_name=container_name,
-            action=action,
-            created_at=created_at_value,
-            lines=log_body,
-        ))
+        log_file_path = str(
+            write_log_file(
+                id=id,
+                container_name=container_name,
+                action=action,
+                created_at=created_at_value,
+                lines=log_body,
+            )
+        )
 
     return EventLog(
         id=id,
@@ -141,10 +142,13 @@ def write_log_file(
 
 
 def sanitize(value: str) -> str:
-    return "".join(
-        character if character.isalnum() or character in "._-" else "-"
-        for character in value
-    ).strip("-") or "unknown"
+    return (
+        "".join(
+            character if character.isalnum() or character in "._-" else "-"
+            for character in value
+        ).strip("-")
+        or "unknown"
+    )
 
 
 def clear_logs() -> None:

@@ -5,7 +5,6 @@ from unittest.mock import Mock
 
 import pytest
 
-
 if "docker" not in sys.modules:
     docker_module = types.ModuleType("docker")
     docker_errors_module = types.ModuleType("docker.errors")

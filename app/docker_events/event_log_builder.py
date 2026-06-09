@@ -1,12 +1,11 @@
 from datetime import datetime
-from typing import Optional
 
 from app.docker_events.types import DockerEvent
 from app.models import EventLog
 
 
 class DockerEventLogBuilder:
-    def build(self, event: DockerEvent) -> Optional[EventLog]:
+    def build(self, event: DockerEvent) -> EventLog | None:
         action = event.get("Action") or event.get("status")
         actor = event.get("Actor", {})
         container_id = event.get("id") or actor.get("ID")
@@ -26,7 +25,7 @@ class DockerEventLogBuilder:
             created_at=created_at,
         )
 
-    def extract_exit_code(self, attributes: dict[str, object]) -> Optional[str]:
+    def extract_exit_code(self, attributes: dict[str, object]) -> str | None:
         exit_code = (
             attributes.get("exitCode")
             or attributes.get("exit_code")

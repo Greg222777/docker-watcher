@@ -9,7 +9,7 @@ from flask import Flask, abort, redirect, render_template, request, send_file, u
 
 from app.config import LOG_DIR
 from app.database import event_log_repository, monitored_event_action_repository
-from app.models import DockerEventAction, WATCHED_DOCKER_ACTIONS
+from app.models import WATCHED_DOCKER_ACTIONS, DockerEventAction
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))

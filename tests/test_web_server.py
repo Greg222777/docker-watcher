@@ -43,7 +43,7 @@ def test_events_page_renders_events(web_client) -> None:
 
     assert response.status_code == 200
     assert b"Docker Watcher" in response.data
-    assert b'/static/css/events.css' in response.data
+    assert b"/static/css/events.css" in response.data
     assert b"Delete all recorded events and log files?" in response.data
     assert b"api" in response.data
     assert b"abcdef123456" in response.data
@@ -175,7 +175,9 @@ def test_save_monitoring_options_updates_repository(web_client) -> None:
 
     assert response.status_code == 302
     assert response.headers["Location"] == "/events?container=api"
-    replace_all.assert_called_once_with({
-        DockerEventAction.DIE,
-        DockerEventAction.OOM,
-    })
+    replace_all.assert_called_once_with(
+        {
+            DockerEventAction.DIE,
+            DockerEventAction.OOM,
+        }
+    )

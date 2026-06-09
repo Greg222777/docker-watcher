@@ -1,11 +1,10 @@
-from uuid import uuid4
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 
 from app.database import MonitoredEventActionRepository
 from app.models import DEFAULT_MONITORED_EVENT_ACTIONS, DockerEventAction
-
 
 TEST_DIR = Path(__file__).resolve().parent
 

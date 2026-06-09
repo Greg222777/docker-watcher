@@ -1,7 +1,6 @@
 import logging
-from pathlib import Path
 import re
-from typing import Optional
+from pathlib import Path
 
 from app.config import LOG_DIR
 from app.models import EventLog
@@ -9,6 +8,7 @@ from app.models import EventLog
 try:
     from docker.errors import APIError, NotFound
 except ModuleNotFoundError:
+
     class APIError(Exception):
         pass
 
@@ -40,12 +40,8 @@ class ContainerLogWriter:
         )
 
     def _write_container_logs(
-        self,
-        container_id: str,
-        container_name: str,
-        action: str,
-        created_at: str
-    ) -> Optional[str]:
+        self, container_id: str, container_name: str, action: str, created_at: str
+    ) -> str | None:
         try:
             container = self.client.containers.get(container_id)
             logs = container.logs(tail=self.tail_lines, timestamps=True)
@@ -74,8 +70,7 @@ class ContainerLogWriter:
             )
 
             log_file_path.write_text(
-                logs.decode("utf-8", errors="replace"),
-                encoding="utf-8"
+                logs.decode("utf-8", errors="replace"), encoding="utf-8"
             )
         except OSError as error:
             logger.error(
@@ -88,11 +83,7 @@ class ContainerLogWriter:
         return str(log_file_path)
 
     def _build_log_filename(
-        self,
-        container_name: str,
-        container_id: str,
-        action: str,
-        created_at: str
+        self, container_name: str, container_id: str, action: str, created_at: str
     ) -> str:
         safe_name = self._sanitize_filename_part(container_name)
         safe_action = self._sanitize_filename_part(action)
