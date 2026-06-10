@@ -34,8 +34,9 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=your_bot_token_here
       - TELEGRAM_CHAT_ID=your_chat_id_here
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY=your_openai_api_key_here
       - WEB_PORT=8000
+      - LOG_LEVEL=INFO
     ports:
       - "8000:8000"
     volumes:
