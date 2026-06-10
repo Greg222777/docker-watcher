@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/events.css') }}">
+{% endblock %}
+
+{% block body %}
+    <header>
+        <h1>AI Log Analysis</h1>
+        <p class="subtitle">{{ event.container_name }} / {{ event.action }} / {{ event.created_at }}</p>
+    </header>
+    <main>
+        <div class="analysis-actions">
+            <a class="button" href="{{ url_for('events_page') }}">Back to events</a>
+            <a class="button" href="{{ url_for('log_file', filename=log_filename) }}">Open logs</a>
+        </div>
+        <section class="analysis-panel" data-analysis-url="{{ analysis_result_url }}">
+            <div class="analysis-loader" role="status" aria-live="polite">
+                <span class="loader-dot"></span>
+                <span>Analyzing logs with OpenAI...</span>
+            </div>
+            <div class="analysis-result" hidden></div>
+        </section>
+    </main>
+    <script>
+        const panel = document.querySelector("[data-analysis-url]");
+        const loader = panel.querySelector(".analysis-loader");
+        const result = panel.querySelector(".analysis-result");
+
+        function escapeHtml(value) {
+            return value
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#039;");
+        }
+
+        function renderMarkdownLite(markdown) {
+            const lines = markdown.split(/\r?\n/);
+            const html = [];
+            let listOpen = false;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+
+                if (!trimmed) {
+                    if (listOpen) {
+                        html.push("</ul>");
+                        listOpen = false;
+                    }
+                    continue;
+                }
+
+                const heading = trimmed.match(/^(#{1,4})\s+(.+)$/);
+                if (heading) {
+                    if (listOpen) {
+                        html.push("</ul>");
+                        listOpen = false;
+                    }
+                    const level = Math.min(heading[1].length + 1, 4);
+                    html.push(`<h${level}>${escapeHtml(heading[2])}</h${level}>`);
+                    continue;
+                }
+
+                const listItem = trimmed.match(/^[-*]\s+(.+)$/);
+                if (listItem) {
+                    if (!listOpen) {
+                        html.push("<ul>");
+                        listOpen = true;
+                    }
+                    html.push(`<li>${escapeHtml(listItem[1])}</li>`);
+                    continue;
+                }
+
+                if (listOpen) {
+                    html.push("</ul>");
+                    listOpen = false;
+                }
+                html.push(`<p>${escapeHtml(trimmed)}</p>`);
+            }
+
+            if (listOpen) {
+                html.push("</ul>");
+            }
+
+            return html.join("");
+        }
+
+        fetch(panel.dataset.analysisUrl)
+            .then(async (response) => {
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(payload.error || "AI analysis failed.");
+                }
+
+                return payload.analysis || "No analysis returned.";
+            })
+            .then((analysis) => {
+                loader.hidden = true;
+                result.hidden = false;
+                result.innerHTML = renderMarkdownLite(analysis);
+            })
+            .catch((error) => {
+                loader.hidden = true;
+                result.hidden = false;
+                result.classList.add("analysis-error");
+                result.textContent = error.message;
+            });
+    </script>
+{% endblock %}

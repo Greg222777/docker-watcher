@@ -70,6 +70,25 @@ class EventLogRepository:
             with conn:
                 conn.execute("DELETE FROM container_events")
 
+    def select_by_id(self, event_id: int) -> EventLog | None:
+        """
+        Retrieve one event by its database ID.
+        """
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            cursor = conn.execute(
+                """
+                SELECT *
+                FROM container_events
+                WHERE id = ?
+            """,
+                (event_id,),
+            )
+            row = cursor.fetchone()
+
+            return EventLog.from_row(dict(row)) if row else None
+
     def select_between(
         self, start_timestamp: str, end_timestamp: str
     ) -> list[EventLog]:

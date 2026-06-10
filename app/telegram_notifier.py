@@ -8,6 +8,7 @@ from app.models import EventLog
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TELEGRAM_API_BASE_URL = "https://api.telegram.org"
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +29,7 @@ class TelegramNotifier:
             logger.info("Telegram is not configured.")
             return
 
-        url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
+        url = f"{TELEGRAM_API_BASE_URL}/bot{self.bot_token}/sendMessage"
 
         payload = {"chat_id": self.chat_id, "text": message, "parse_mode": "HTML"}
 

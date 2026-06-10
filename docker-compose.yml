@@ -6,8 +6,8 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=your_bot_token_here
       - TELEGRAM_CHAT_ID=your_chat_id_here
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - WEB_PORT=8000
-      - DATA_DIR=/data
     ports:
       - "8000:8000"
     volumes:

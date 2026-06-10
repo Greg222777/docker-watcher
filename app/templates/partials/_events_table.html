@@ -22,7 +22,13 @@
                     <td>{{ event.exit_code or "" }}</td>
                     <td>
                         {% if event.log_file_path %}
-                            <a href="{{ url_for('log_file', filename=event.log_file_path|basename) }}">Open logs</a>
+                            {% set log_filename = event.log_file_path|basename %}
+                            <div class="log-actions">
+                                <a href="{{ url_for('log_file', filename=log_filename) }}">Open logs</a>
+                                <a class="ai-analyze-button" href="{{ url_for('ai_log_analysis', event_id=event.id) }}" title="Analyze this log file with AI">
+                                    <span class="ai-badge">AI</span>
+                                </a>
+                            </div>
                         {% else %}
                             <span class="muted">No log file</span>
                         {% endif %}

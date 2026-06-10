@@ -5,8 +5,18 @@ from pathlib import Path
 from shutil import rmtree
 from threading import Thread
 
-from flask import Flask, abort, redirect, render_template, request, send_file, url_for
+from flask import (
+    Flask,
+    abort,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 
+from app.ai_log_analyzer import AILogAnalysisError, OpenAILogAnalyzer
 from app.config import LOG_DIR
 from app.database import event_log_repository, monitored_event_action_repository
 from app.models import WATCHED_DOCKER_ACTIONS, DockerEventAction
@@ -97,6 +107,30 @@ def log_file(filename: str):
     return send_file(log_path, mimetype="text/plain")
 
 
+@app.get("/events/<int:event_id>/ai-analysis")
+def ai_log_analysis(event_id: int):
+    event, log_path = _event_and_log_path_or_404(event_id)
+
+    return render_template(
+        "ai_analysis.html",
+        analysis_result_url=url_for("ai_log_analysis_result", event_id=event_id),
+        event=event,
+        log_filename=log_path.name,
+    )
+
+
+@app.get("/events/<int:event_id>/ai-analysis/result")
+def ai_log_analysis_result(event_id: int):
+    event, log_path = _event_and_log_path_or_404(event_id)
+
+    try:
+        analysis = OpenAILogAnalyzer().analyze_event_log(event=event, log_path=log_path)
+    except AILogAnalysisError as error:
+        return jsonify({"error": f"AI log analysis failed: {error}"}), 503
+
+    return jsonify({"analysis": analysis})
+
+
 @app.post("/events/delete-all")
 def delete_all_events():
     event_log_repository.delete_all()
@@ -184,6 +218,20 @@ def _safe_redirect_path(path: str) -> str:
 
 def _is_safe_log_path(log_path: Path) -> bool:
     return log_path == LOG_DIR or LOG_DIR in log_path.parents
+
+
+def _event_and_log_path_or_404(event_id: int):
+    event = event_log_repository.select_by_id(event_id)
+
+    if not event or not event.log_file_path:
+        abort(404)
+
+    log_path = (LOG_DIR / Path(event.log_file_path).name).resolve()
+
+    if not _is_safe_log_path(log_path) or not log_path.is_file():
+        abort(404)
+
+    return event, log_path
 
 
 def _current_path() -> str:

@@ -57,6 +57,40 @@ def test_events_page_renders_events(web_client) -> None:
     )
 
 
+def test_events_page_renders_ai_analysis_button_for_events_with_logs(web_client) -> None:
+    event = EventLog(
+        id=1,
+        container_name="api",
+        container_id="abcdef1234567890",
+        action="die",
+        log_file_path="/data/logs/event.log",
+    )
+
+    with (
+        patch.object(
+            web_server.event_log_repository,
+            "count_filtered",
+            return_value=1,
+        ),
+        patch.object(
+            web_server.event_log_repository,
+            "select_filtered",
+            return_value=[event],
+        ),
+        patch.object(
+            web_server.monitored_event_action_repository,
+            "select_all",
+            return_value={DockerEventAction.DIE},
+        ),
+    ):
+        response = web_client.get("/")
+
+    assert response.status_code == 200
+    assert b"AI" in response.data
+    assert b"Analyze this log file with AI" in response.data
+    assert b"/events/1/ai-analysis" in response.data
+
+
 def test_events_page_filters_by_event_action(web_client) -> None:
     event = EventLog(
         id=1,
@@ -151,6 +185,75 @@ def test_log_file_serves_files_from_log_dir(web_client, test_log_dir) -> None:
     assert response.status_code == 200
     assert response.text == "container logs"
     response.close()
+
+
+def test_ai_log_analysis_page_renders_loader(web_client, test_log_dir) -> None:
+    event = EventLog(
+        id=1,
+        container_name="api",
+        container_id="abcdef1234567890",
+        action="die",
+        log_file_path=str(test_log_dir / "event.log"),
+    )
+    log_file = test_log_dir / "event.log"
+    log_file.write_text("container logs", encoding="utf-8")
+
+    with (
+        patch.object(web_server, "LOG_DIR", test_log_dir.resolve()),
+        patch.object(web_server.event_log_repository, "select_by_id", return_value=event),
+    ):
+        response = web_client.get("/events/1/ai-analysis")
+
+    assert response.status_code == 200
+    assert b"AI Log Analysis" in response.data
+    assert b"Analyzing logs with OpenAI..." in response.data
+    assert b"/events/1/ai-analysis/result" in response.data
+
+
+def test_ai_log_analysis_result_requires_api_key(web_client, test_log_dir) -> None:
+    event = EventLog(
+        id=1,
+        container_name="api",
+        container_id="abcdef1234567890",
+        action="die",
+        log_file_path=str(test_log_dir / "event.log"),
+    )
+    log_file = test_log_dir / "event.log"
+    log_file.write_text("container logs", encoding="utf-8")
+
+    with (
+        patch.object(web_server, "LOG_DIR", test_log_dir.resolve()),
+        patch.object(web_server.event_log_repository, "select_by_id", return_value=event),
+        patch.dict("os.environ", {"OPENAI_API_KEY": ""}),
+    ):
+        response = web_client.get("/events/1/ai-analysis/result")
+
+    assert response.status_code == 503
+    assert response.json == {
+        "error": "AI log analysis failed: OPENAI_API_KEY is not set."
+    }
+
+
+def test_ai_log_analysis_result_returns_analysis(web_client, test_log_dir) -> None:
+    event = EventLog(
+        id=1,
+        container_name="api",
+        container_id="abcdef1234567890",
+        action="die",
+        log_file_path=str(test_log_dir / "event.log"),
+    )
+    log_file = test_log_dir / "event.log"
+    log_file.write_text("container logs", encoding="utf-8")
+
+    with (
+        patch.object(web_server, "LOG_DIR", test_log_dir.resolve()),
+        patch.object(web_server.event_log_repository, "select_by_id", return_value=event),
+        patch.object(web_server.OpenAILogAnalyzer, "analyze_event_log", return_value="Fix disk space."),
+    ):
+        response = web_client.get("/events/1/ai-analysis/result")
+
+    assert response.status_code == 200
+    assert response.json == {"analysis": "Fix disk space."}
 
 
 def test_static_css_is_served(web_client) -> None:

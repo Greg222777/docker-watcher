@@ -9,9 +9,9 @@ events happen.
 - Watches Docker container events.
 - Stores event history locally in SQLite.
 - Captures recent container logs for recorded events.
+- Analyzes captured logs with OpenAI when an API key is configured.
 - Sends optional Telegram notifications.
 - Provides a Flask web UI.
-- Supports configurable storage and log level.
 - Runs with Docker Compose.
 
 ## Requirements 📦
@@ -19,6 +19,7 @@ events happen.
 - Docker
 - Docker Compose
 - A Telegram bot token and chat ID if you want notifications
+- An OpenAI API key if you want AI log analysis
 
 ## Installation With Docker 🚀
 
@@ -33,9 +34,8 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=your_bot_token_here
       - TELEGRAM_CHAT_ID=your_chat_id_here
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - WEB_PORT=8000
-      - DATA_DIR=/data
-      - LOG_LEVEL=INFO
     ports:
       - "8000:8000"
     volumes:
@@ -61,17 +61,20 @@ http://localhost:8000
 | --- | --- | --- |
 | `TELEGRAM_BOT_TOKEN` | empty | Telegram bot token. Leave empty to disable notifications. |
 | `TELEGRAM_CHAT_ID` | empty | Telegram chat ID that should receive notifications. |
+| `OPENAI_API_KEY` | empty | OpenAI API key used for AI log analysis. Leave empty to disable AI analysis. |
 | `WEB_PORT` | `8000` | Port used by the Flask web UI inside the container. |
-| `DATA_DIR` | `/data` | Internal directory used for the SQLite database and captured logs. |
 | `LOG_LEVEL` | `INFO` | Application log level, for example `DEBUG`, `INFO`, `WARNING`, or `ERROR`. |
 
 Telegram is optional. If `TELEGRAM_BOT_TOKEN` or `TELEGRAM_CHAT_ID` is missing,
 Docker Watcher still runs, but notifications are skipped.
 
+OpenAI is optional. If `OPENAI_API_KEY` is missing, Docker Watcher still runs,
+but AI log analysis is unavailable.
+
 ## Storage 💾
 
-Docker Watcher stores the SQLite database and captured container logs in the
-configured `DATA_DIR`.
+Docker Watcher stores the SQLite database and captured container logs in `/data`
+inside the container.
 
 With the Docker Compose example above, `/data` is mounted to `./data` on the
 host machine:
