@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from html import escape
-from typing import Any
 
 
 @dataclass
@@ -13,28 +12,6 @@ class EventLog:
     log_file_path: str | None = None
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
     id: int | None = None
-
-    @classmethod
-    def from_row(cls, row: dict[str, Any]) -> "EventLog":
-        return cls(
-            id=row.get("id"),
-            container_name=row["container_name"],
-            container_id=row["container_id"],
-            action=row["action"],
-            exit_code=row.get("exit_code"),
-            log_file_path=row.get("log_file_path"),
-            created_at=row["created_at"],
-        )
-
-    def to_insert_values(self) -> tuple[str, str, str, str | None, str | None, str]:
-        return (
-            self.container_name,
-            self.container_id,
-            self.action,
-            self.exit_code,
-            self.log_file_path,
-            self.created_at,
-        )
 
     def to_telegram_message(self) -> str:
         lines = [

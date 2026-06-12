@@ -1,93 +1,57 @@
-import sqlite3
-from contextlib import closing
+from sqlalchemy import func, or_, select
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.config import DB_PATH
+from app.database.session import create_session_factory
+from app.database.tables import ContainerEventRecord
 from app.models import EventLog
 
 
 class EventLogRepository:
     def __init__(self, db_path: str | None = None) -> None:
         self.db_path = str(db_path or DB_PATH)
+        self.session_factory = create_session_factory(self.db_path)
 
     def init_db(self) -> None:
         """
         Initialize the database and create the events table if it does not exist.
         """
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            with conn:
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS container_events (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        container_name TEXT NOT NULL,
-                        container_id TEXT NOT NULL,
-                        action TEXT NOT NULL,
-                        exit_code TEXT,
-                        log_file_path TEXT,
-                        created_at TEXT NOT NULL
-                    )
-                """)
+        ContainerEventRecord.__table__.create(
+            bind=self.session_factory.kw["bind"],
+            checkfirst=True,
+        )
 
     def save(self, event: EventLog) -> None:
         """
         Save a Docker container event in the database.
         """
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            with conn:
-                conn.execute(
-                    """
-                    INSERT INTO container_events (
-                        container_name,
-                        container_id,
-                        action,
-                        exit_code,
-                        log_file_path,
-                        created_at
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                    event.to_insert_values(),
-                )
+        with self.session_factory.begin() as session:
+            session.add(ContainerEventRecord.from_event_log(event))
 
     def delete(self, event_id: int) -> None:
         """
         Delete a single event by its database ID.
         """
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            with conn:
-                conn.execute(
-                    """
-                    DELETE FROM container_events
-                    WHERE id = ?
-                """,
-                    (event_id,),
-                )
+        with self.session_factory.begin() as session:
+            event = session.get(ContainerEventRecord, event_id)
+            if event is not None:
+                session.delete(event)
 
     def delete_all(self) -> None:
         """
         Delete all events from the database.
         """
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            with conn:
-                conn.execute("DELETE FROM container_events")
+        with self.session_factory.begin() as session:
+            session.query(ContainerEventRecord).delete()
 
     def select_by_id(self, event_id: int) -> EventLog | None:
         """
         Retrieve one event by its database ID.
         """
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            conn.row_factory = sqlite3.Row
+        with self.session_factory() as session:
+            record = session.get(ContainerEventRecord, event_id)
 
-            cursor = conn.execute(
-                """
-                SELECT *
-                FROM container_events
-                WHERE id = ?
-            """,
-                (event_id,),
-            )
-            row = cursor.fetchone()
-
-            return EventLog.from_row(dict(row)) if row else None
+            return record.to_event_log() if record else None
 
     def select_between(
         self, start_timestamp: str, end_timestamp: str
@@ -95,20 +59,18 @@ class EventLogRepository:
         """
         Retrieve events between two ISO timestamps.
         """
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            conn.row_factory = sqlite3.Row
-
-            cursor = conn.execute(
-                """
-                SELECT *
-                FROM container_events
-                WHERE created_at BETWEEN ? AND ?
-                ORDER BY created_at DESC
-            """,
-                (start_timestamp, end_timestamp),
+        with self.session_factory() as session:
+            records = session.scalars(
+                select(ContainerEventRecord)
+                .where(
+                    ContainerEventRecord.created_at.between(
+                        start_timestamp, end_timestamp
+                    )
+                )
+                .order_by(ContainerEventRecord.created_at.desc())
             )
 
-            return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
+            return [record.to_event_log() for record in records]
 
     def select_filtered(
         self,
@@ -122,29 +84,23 @@ class EventLogRepository:
         """
         Retrieve a filtered page of events ordered by creation date descending.
         """
-        where_clause, params = self._build_filter_clause(
+        filters = self._build_filters(
             start_timestamp=start_timestamp,
             end_timestamp=end_timestamp,
             container_filter=container_filter,
             action_filter=action_filter,
         )
 
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            conn.row_factory = sqlite3.Row
-
-            cursor = conn.execute(
-                f"""
-                SELECT *
-                FROM container_events
-                {where_clause}
-                ORDER BY created_at DESC
-                LIMIT ?
-                OFFSET ?
-            """,
-                [*params, limit, offset],
+        with self.session_factory() as session:
+            records = session.scalars(
+                select(ContainerEventRecord)
+                .where(*filters)
+                .order_by(ContainerEventRecord.created_at.desc())
+                .limit(limit)
+                .offset(offset)
             )
 
-            return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
+            return [record.to_event_log() for record in records]
 
     def count_filtered(
         self,
@@ -156,73 +112,67 @@ class EventLogRepository:
         """
         Count events matching the same filters used for paginated retrieval.
         """
-        where_clause, params = self._build_filter_clause(
+        filters = self._build_filters(
             start_timestamp=start_timestamp,
             end_timestamp=end_timestamp,
             container_filter=container_filter,
             action_filter=action_filter,
         )
 
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            cursor = conn.execute(
-                f"""
-                SELECT COUNT(*)
-                FROM container_events
-                {where_clause}
-            """,
-                params,
+        with self.session_factory() as session:
+            count = session.scalar(
+                select(func.count()).select_from(ContainerEventRecord).where(*filters)
             )
 
-            return int(cursor.fetchone()[0])
+            return int(count or 0)
 
     def select_all(self) -> list[EventLog]:
         """
         Retrieve all events ordered by creation date descending.
         """
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            conn.row_factory = sqlite3.Row
+        with self.session_factory() as session:
+            records = session.scalars(
+                select(ContainerEventRecord).order_by(
+                    ContainerEventRecord.created_at.desc()
+                )
+            )
 
-            cursor = conn.execute("""
-                SELECT *
-                FROM container_events
-                ORDER BY created_at DESC
-            """)
+            return [record.to_event_log() for record in records]
 
-            return [EventLog.from_row(dict(row)) for row in cursor.fetchall()]
-
-    def _build_filter_clause(
+    def _build_filters(
         self,
         start_timestamp: str,
         end_timestamp: str,
         container_filter: str,
         action_filter: str,
-    ) -> tuple[str, list[str]]:
-        clauses = []
-        params = []
+    ) -> list[ColumnElement[bool]]:
+        filters = []
 
         if start_timestamp:
-            clauses.append("created_at >= ?")
-            params.append(start_timestamp)
+            filters.append(ContainerEventRecord.created_at >= start_timestamp)
 
         if end_timestamp:
-            clauses.append("created_at <= ?")
-            params.append(end_timestamp)
+            filters.append(ContainerEventRecord.created_at <= end_timestamp)
 
         if container_filter:
-            clauses.append("""
-                (
-                    LOWER(container_name) LIKE ?
-                    OR LOWER(container_id) LIKE ?
-                )
-            """)
             normalized_filter = f"%{container_filter.lower()}%"
-            params.extend([normalized_filter, normalized_filter])
+            filters.append(
+                or_(
+                    func.lower(ContainerEventRecord.container_name).like(
+                        normalized_filter
+                    ),
+                    func.lower(ContainerEventRecord.container_id).like(
+                        normalized_filter
+                    ),
+                )
+            )
 
         if action_filter:
-            clauses.append("(action = ? OR action LIKE ?)")
-            params.extend([action_filter, f"{action_filter}:%"])
+            filters.append(
+                or_(
+                    ContainerEventRecord.action == action_filter,
+                    ContainerEventRecord.action.like(f"{action_filter}:%"),
+                )
+            )
 
-        if not clauses:
-            return "", params
-
-        return f"WHERE {' AND '.join(clauses)}", params
+        return filters
