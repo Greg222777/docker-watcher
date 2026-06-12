@@ -85,23 +85,6 @@ volumes:
   - ./data:/data
 ```
 
-## Database Migrations
-
-Docker Watcher uses Alembic to manage the SQLite schema. Migrations are applied
-automatically when the application starts.
-
-For local development, you can also run migrations manually:
-
-```sh
-alembic upgrade head
-```
-
-After changing SQLAlchemy table definitions, create a new migration with:
-
-```sh
-alembic revision --autogenerate -m "describe the schema change"
-```
-
 ## Monitoring Options 👀
 
 Docker Watcher listens to Docker container events and only records or sends
