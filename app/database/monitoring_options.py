@@ -1,6 +1,7 @@
 from sqlalchemy import func, select
 
 from app.config import DB_PATH
+from app.database.migrations import run_migrations
 from app.database.session import create_session_factory
 from app.database.tables import MonitoredEventActionRecord
 from app.models import DEFAULT_MONITORED_EVENT_ACTIONS, DockerEventAction
@@ -13,16 +14,15 @@ class MonitoredEventActionRepository:
 
     def init_db(self) -> None:
         """
-        Initialize monitored Docker event actions.
+        Apply database migrations and initialize monitored Docker event actions.
 
         The default selection focuses on abnormal or operationally important
         container states. Existing user choices are preserved across restarts.
         """
-        MonitoredEventActionRecord.__table__.create(
-            bind=self.session_factory.kw["bind"],
-            checkfirst=True,
-        )
+        run_migrations(self.db_path)
+        self.seed_defaults()
 
+    def seed_defaults(self) -> None:
         with self.session_factory.begin() as session:
             existing_count = session.scalar(
                 select(func.count()).select_from(MonitoredEventActionRecord)
