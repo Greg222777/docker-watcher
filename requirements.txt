@@ -2,4 +2,3 @@ docker
 Flask
 requests
 SQLAlchemy
-alembic
