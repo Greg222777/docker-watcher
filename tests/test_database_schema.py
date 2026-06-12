@@ -1,10 +1,18 @@
-import sqlite3
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import create_engine, inspect, select
+from sqlalchemy.orm import Session
+from sqlalchemy.pool import NullPool
 
 from app.database.schema import run_migrations
+from app.database.session import build_database_url
+from app.database.tables import (
+    ContainerEventRecord,
+    MonitoredEventActionRecord,
+    SchemaMigrationRecord,
+)
 
 TEST_DIR = Path(__file__).resolve().parent
 
@@ -25,56 +33,41 @@ def db_path() -> Path:
 def test_run_migrations_creates_schema(db_path) -> None:
     run_migrations(db_path)
 
-    with sqlite3.connect(db_path) as conn:
-        table_names = _select_table_names(conn)
-        revisions = _select_revisions(conn)
+    engine = _create_engine(db_path)
+
+    with engine.connect() as connection:
+        table_names = set(inspect(connection).get_table_names())
 
     assert "schema_migrations" in table_names
     assert "container_events" in table_names
     assert "monitored_event_actions" in table_names
-    assert revisions == {"0001_initial_schema"}
+    assert _select_revisions(db_path) == {"0001_initial_schema"}
 
 
 def test_run_migrations_marks_existing_schema_as_applied(db_path) -> None:
-    with sqlite3.connect(db_path) as conn:
-        conn.executescript("""
-            CREATE TABLE container_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                container_name TEXT NOT NULL,
-                container_id TEXT NOT NULL,
-                action TEXT NOT NULL,
-                exit_code TEXT,
-                log_file_path TEXT,
-                created_at TEXT NOT NULL
-            );
+    engine = _create_engine(db_path)
 
-            CREATE TABLE monitored_event_actions (
-                action TEXT PRIMARY KEY
-            );
-        """)
+    with engine.begin() as connection:
+        ContainerEventRecord.__table__.create(bind=connection)
+        MonitoredEventActionRecord.__table__.create(bind=connection)
 
     run_migrations(db_path)
 
-    with sqlite3.connect(db_path) as conn:
-        revisions = _select_revisions(conn)
-
-    assert revisions == {"0001_initial_schema"}
+    assert _select_revisions(db_path) == {"0001_initial_schema"}
 
 
-def _select_table_names(conn: sqlite3.Connection) -> set[str]:
-    rows = conn.execute("""
-        SELECT name
-        FROM sqlite_master
-        WHERE type = 'table'
-    """).fetchall()
-
-    return {row[0] for row in rows}
+def _create_engine(db_path: Path):
+    return create_engine(
+        build_database_url(db_path),
+        future=True,
+        poolclass=NullPool,
+    )
 
 
-def _select_revisions(conn: sqlite3.Connection) -> set[str]:
-    rows = conn.execute("""
-        SELECT revision
-        FROM schema_migrations
-    """).fetchall()
+def _select_revisions(db_path: Path) -> set[str]:
+    engine = _create_engine(db_path)
 
-    return {row[0] for row in rows}
+    with Session(engine) as session:
+        revisions = session.scalars(select(SchemaMigrationRecord.revision))
+
+        return set(revisions)

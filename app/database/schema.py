@@ -1,101 +1,83 @@
-import sqlite3
-from collections.abc import Iterable
-from contextlib import closing
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
+from sqlalchemy import Connection, create_engine, inspect, select
+from sqlalchemy.orm import Session
+from sqlalchemy.pool import NullPool
+
 from app.config import DB_PATH
+from app.database.session import build_database_url
+from app.database.tables import (
+    ContainerEventRecord,
+    MonitoredEventActionRecord,
+    SchemaMigrationRecord,
+)
 
-SCHEMA_MIGRATIONS_TABLE = "schema_migrations"
 APPLICATION_TABLES = {"container_events", "monitored_event_actions"}
+Migration = Callable[[Connection], None]
 
-MIGRATIONS = [
-    (
-        "0001_initial_schema",
-        """
-        CREATE TABLE container_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            container_name TEXT NOT NULL,
-            container_id TEXT NOT NULL,
-            action TEXT NOT NULL,
-            exit_code TEXT,
-            log_file_path TEXT,
-            created_at TEXT NOT NULL
-        );
 
-        CREATE TABLE monitored_event_actions (
-            action TEXT PRIMARY KEY
-        );
-        """,
-    )
+def _create_initial_schema(connection: Connection) -> None:
+    ContainerEventRecord.__table__.create(bind=connection)
+    MonitoredEventActionRecord.__table__.create(bind=connection)
+
+
+MIGRATIONS: list[tuple[str, Migration]] = [
+    ("0001_initial_schema", _create_initial_schema),
 ]
 
 
 def run_migrations(db_path: str | Path = DB_PATH) -> None:
-    with closing(sqlite3.connect(db_path)) as conn:
-        with conn:
-            _create_schema_migrations_table(conn)
+    engine = create_engine(
+        build_database_url(db_path),
+        future=True,
+        poolclass=NullPool,
+    )
 
-            if _has_existing_unversioned_schema(conn):
-                _mark_migrations_as_applied(
-                    conn,
-                    (revision for revision, _sql in MIGRATIONS),
-                )
-                return
+    with engine.begin() as connection:
+        SchemaMigrationRecord.__table__.create(bind=connection, checkfirst=True)
+        session = Session(bind=connection)
 
-            applied_revisions = _select_applied_revisions(conn)
+        if _has_existing_unversioned_schema(connection, session):
+            _mark_migrations_as_applied(
+                session,
+                (revision for revision, _migration in MIGRATIONS),
+            )
+            return
 
-            for revision, sql in MIGRATIONS:
-                if revision not in applied_revisions:
-                    conn.executescript(sql)
-                    _mark_migrations_as_applied(conn, [revision])
+        applied_revisions = _select_applied_revisions(session)
 
-
-def _create_schema_migrations_table(conn: sqlite3.Connection) -> None:
-    conn.execute(f"""
-        CREATE TABLE IF NOT EXISTS {SCHEMA_MIGRATIONS_TABLE} (
-            revision TEXT PRIMARY KEY,
-            applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+        for revision, migration in MIGRATIONS:
+            if revision not in applied_revisions:
+                migration(connection)
+                _mark_migrations_as_applied(session, [revision])
 
 
-def _has_existing_unversioned_schema(conn: sqlite3.Connection) -> bool:
-    table_names = _select_table_names(conn)
+def _has_existing_unversioned_schema(
+    connection: Connection,
+    session: Session,
+) -> bool:
+    # Databases up to 1.1 had application tables but no migration tracking table.
+    table_names = set(inspect(connection).get_table_names())
 
     if not APPLICATION_TABLES.issubset(table_names):
         return False
 
-    applied_revisions = _select_applied_revisions(conn)
+    applied_revisions = _select_applied_revisions(session)
     return len(applied_revisions) == 0
 
 
-def _select_table_names(conn: sqlite3.Connection) -> set[str]:
-    rows = conn.execute("""
-        SELECT name
-        FROM sqlite_master
-        WHERE type = 'table'
-    """).fetchall()
+def _select_applied_revisions(session: Session) -> set[str]:
+    revisions = session.scalars(select(SchemaMigrationRecord.revision))
 
-    return {row[0] for row in rows}
-
-
-def _select_applied_revisions(conn: sqlite3.Connection) -> set[str]:
-    rows = conn.execute(f"""
-        SELECT revision
-        FROM {SCHEMA_MIGRATIONS_TABLE}
-    """).fetchall()
-
-    return {row[0] for row in rows}
+    return set(revisions)
 
 
 def _mark_migrations_as_applied(
-    conn: sqlite3.Connection,
+    session: Session,
     revisions: Iterable[str],
 ) -> None:
-    conn.executemany(
-        f"""
-        INSERT OR IGNORE INTO {SCHEMA_MIGRATIONS_TABLE} (revision)
-        VALUES (?)
-        """,
-        [(revision,) for revision in revisions],
+    session.add_all(
+        [SchemaMigrationRecord(revision=revision) for revision in revisions]
     )
+    session.flush()
