@@ -85,12 +85,6 @@ volumes:
   - ./data:/data
 ```
 
-## Database Schema
-
-Docker Watcher applies small built-in SQLite migrations automatically when the
-application starts. Applied migrations are tracked in the `schema_migrations`
-table.
-
 ## Monitoring Options 👀
 
 Docker Watcher listens to Docker container events and only records or sends
