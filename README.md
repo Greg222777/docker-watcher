@@ -47,6 +47,9 @@ volumes:
   dockerwatcher_data:
 ```
 
+The Docker socket mount is required so Docker Watcher can listen to container
+events.
+
 Then start Docker Watcher:
 
 ```sh
@@ -80,19 +83,9 @@ but AI log analysis is unavailable.
 Docker Watcher stores the SQLite database and captured container logs in `/data`
 inside the container.
 
-With the Docker Compose example above, `/data` is mounted to the
-`dockerwatcher_data` Docker volume:
-
-```yaml
-volumes:
-  dockerwatcher_data:
-```
-
-## Database Schema
-
-Docker Watcher applies small built-in SQLite migrations automatically when the
-application starts. Applied migrations are tracked in the `schema_migrations`
-table.
+The Docker Compose example uses the `dockerwatcher_data` named volume. Keep it
+if you want event history and captured logs to persist across container restarts
+and updates.
 
 ## Monitoring Options 👀
 
