@@ -10,7 +10,9 @@ from app.models import EventLog
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 OPENAI_MODEL = "gpt-4o-mini"
 MAX_LOG_CHARS = 20000
-PROMPT_TEMPLATE_PATH = Path(__file__).resolve().parent / "prompts" / "ai_log_analysis_prompt.txt"
+PROMPT_TEMPLATE_PATH = (
+    Path(__file__).resolve().parent / "prompts" / "ai_log_analysis_prompt.txt"
+)
 
 
 class AILogAnalysisError(Exception):

@@ -57,7 +57,9 @@ def test_events_page_renders_events(web_client) -> None:
     )
 
 
-def test_events_page_renders_ai_analysis_button_for_events_with_logs(web_client) -> None:
+def test_events_page_renders_ai_analysis_button_for_events_with_logs(
+    web_client,
+) -> None:
     event = EventLog(
         id=1,
         container_name="api",
@@ -200,7 +202,9 @@ def test_ai_log_analysis_page_renders_loader(web_client, test_log_dir) -> None:
 
     with (
         patch.object(web_server, "LOG_DIR", test_log_dir.resolve()),
-        patch.object(web_server.event_log_repository, "select_by_id", return_value=event),
+        patch.object(
+            web_server.event_log_repository, "select_by_id", return_value=event
+        ),
     ):
         response = web_client.get("/events/1/ai-analysis")
 
@@ -223,7 +227,9 @@ def test_ai_log_analysis_result_requires_api_key(web_client, test_log_dir) -> No
 
     with (
         patch.object(web_server, "LOG_DIR", test_log_dir.resolve()),
-        patch.object(web_server.event_log_repository, "select_by_id", return_value=event),
+        patch.object(
+            web_server.event_log_repository, "select_by_id", return_value=event
+        ),
         patch.dict("os.environ", {"OPENAI_API_KEY": ""}),
     ):
         response = web_client.get("/events/1/ai-analysis/result")
@@ -247,8 +253,14 @@ def test_ai_log_analysis_result_returns_analysis(web_client, test_log_dir) -> No
 
     with (
         patch.object(web_server, "LOG_DIR", test_log_dir.resolve()),
-        patch.object(web_server.event_log_repository, "select_by_id", return_value=event),
-        patch.object(web_server.OpenAILogAnalyzer, "analyze_event_log", return_value="Fix disk space."),
+        patch.object(
+            web_server.event_log_repository, "select_by_id", return_value=event
+        ),
+        patch.object(
+            web_server.OpenAILogAnalyzer,
+            "analyze_event_log",
+            return_value="Fix disk space.",
+        ),
     ):
         response = web_client.get("/events/1/ai-analysis/result")
 

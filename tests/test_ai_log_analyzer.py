@@ -42,7 +42,9 @@ def test_analyze_event_log_sends_prompt_to_openai(test_log_dir) -> None:
     response.json.return_value = {"output_text": "Disk is full. Free space."}
     response.raise_for_status.return_value = None
 
-    with patch("app.ai_log_analyzer.requests.Session.post", return_value=response) as post:
+    with patch(
+        "app.ai_log_analyzer.requests.Session.post", return_value=response
+    ) as post:
         analysis = OpenAILogAnalyzer(
             api_key="test-key",
             model="test-model",
