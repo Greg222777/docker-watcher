@@ -41,7 +41,10 @@ services:
       - "8000:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./data:/data
+      - dockerwatcher_data:/data
+
+volumes:
+  dockerwatcher_data:
 ```
 
 Then start Docker Watcher:
@@ -77,12 +80,12 @@ but AI log analysis is unavailable.
 Docker Watcher stores the SQLite database and captured container logs in `/data`
 inside the container.
 
-With the Docker Compose example above, `/data` is mounted to `./data` on the
-host machine:
+With the Docker Compose example above, `/data` is mounted to the
+`dockerwatcher_data` Docker volume:
 
 ```yaml
 volumes:
-  - ./data:/data
+  dockerwatcher_data:
 ```
 
 ## Database Schema
