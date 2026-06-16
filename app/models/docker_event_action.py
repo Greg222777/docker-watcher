@@ -1,4 +1,3 @@
-from collections.abc import Collection
 from enum import StrEnum
 
 
@@ -70,9 +69,6 @@ class DockerEventAction(StrEnum):
         Return True when this documented action matches a raw Docker action.
         """
         return self.value == self.normalize(action)
-
-
-WatchedDockerActions = Collection[DockerEventAction]
 
 
 WATCHED_DOCKER_ACTIONS = [

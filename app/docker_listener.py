@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Collection
 from pathlib import Path
 from typing import Any
 
@@ -8,7 +9,7 @@ from docker.errors import DockerException
 from app.database import event_log_repository, monitored_event_action_repository
 from app.docker_events import ContainerLogWriter, build_event_log
 from app.docker_events.log_writer import LOG_DIR
-from app.models import EventLog, WatchedDockerActions
+from app.models import DockerEventAction, EventLog
 from app.telegram_notifier import telegram_notifier
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ class DockerListener:
     def __init__(
         self,
         client: Any | None = None,
-        watched_docker_actions: WatchedDockerActions = frozenset(),
+        watched_docker_actions: Collection[DockerEventAction] = frozenset(),
         log_dir: Path = LOG_DIR,
     ) -> None:
         self.client = client or docker.from_env()
@@ -58,7 +59,7 @@ class DockerListener:
             action.matches(event_log.action) for action in watched_docker_actions
         )
 
-    def _get_watched_docker_actions(self) -> WatchedDockerActions:
+    def _get_watched_docker_actions(self) -> Collection[DockerEventAction]:
         if self.watched_docker_actions:
             return self.watched_docker_actions
 
