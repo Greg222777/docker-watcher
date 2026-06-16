@@ -26,15 +26,6 @@ class EventLogRepository:
         with self.session_factory.begin() as session:
             session.add(ContainerEventRecord.from_event_log(event))
 
-    def delete(self, event_id: int) -> None:
-        """
-        Delete a single event by its database ID.
-        """
-        with self.session_factory.begin() as session:
-            event = session.get(ContainerEventRecord, event_id)
-            if event is not None:
-                session.delete(event)
-
     def delete_all(self) -> None:
         """
         Delete all events from the database.
@@ -50,25 +41,6 @@ class EventLogRepository:
             record = session.get(ContainerEventRecord, event_id)
 
             return record.to_event_log() if record else None
-
-    def select_between(
-        self, start_timestamp: str, end_timestamp: str
-    ) -> list[EventLog]:
-        """
-        Retrieve events between two ISO timestamps.
-        """
-        with self.session_factory() as session:
-            records = session.scalars(
-                select(ContainerEventRecord)
-                .where(
-                    ContainerEventRecord.created_at.between(
-                        start_timestamp, end_timestamp
-                    )
-                )
-                .order_by(ContainerEventRecord.created_at.desc())
-            )
-
-            return [record.to_event_log() for record in records]
 
     def select_filtered(
         self,

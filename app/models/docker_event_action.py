@@ -9,16 +9,14 @@ class DockerEventAction(StrEnum):
     Source:
     https://docs.docker.com/reference/cli/docker/system/events/
 
-    The Docker CLI reports events by object type. This enum contains the distinct
-    action values documented for containers, images, plugins, volumes, networks,
-    daemons, services, nodes, secrets, and configs.
+    This enum contains the distinct container action values documented by the
+    Docker CLI. The listener filters Docker events to containers only.
 
     Note: container health events are documented as `health_status`, but Docker
     can emit detail values such as `health_status: healthy` or
     `health_status: unhealthy`. Use `matches()` when comparing raw event actions.
     """
 
-    # Containers
     ATTACH = "attach"
     COMMIT = "commit"
     COPY = "copy"
@@ -43,33 +41,6 @@ class DockerEventAction(StrEnum):
     TOP = "top"
     UNPAUSE = "unpause"
     UPDATE = "update"
-
-    # Images
-    DELETE = "delete"
-    IMPORT = "import"
-    LOAD = "load"
-    PULL = "pull"
-    PUSH = "push"
-    SAVE = "save"
-    TAG = "tag"
-    UNTAG = "untag"
-
-    # Plugins
-    ENABLE = "enable"
-    DISABLE = "disable"
-    INSTALL = "install"
-    REMOVE = "remove"
-
-    # Volumes
-    MOUNT = "mount"
-    UNMOUNT = "unmount"
-
-    # Networks
-    CONNECT = "connect"
-    DISCONNECT = "disconnect"
-
-    # Daemons
-    RELOAD = "reload"
 
     @classmethod
     def normalize(cls, action: str) -> str:
