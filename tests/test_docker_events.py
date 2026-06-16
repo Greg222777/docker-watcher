@@ -1,21 +1,18 @@
 from pathlib import Path
 
-from app.docker_events import ContainerLogWriter, DockerEventLogBuilder
+from app.docker_events import ContainerLogWriter, build_event_log
 from app.models import EventLog
 
 
 def test_build_returns_none_for_incomplete_event() -> None:
-    builder = DockerEventLogBuilder()
-
-    assert builder.build({"Action": "start"}) is None
-    assert builder.build({"id": "abcdef1234567890"}) is None
+    assert build_event_log({"Action": "start"}) is None
+    assert build_event_log({"id": "abcdef1234567890"}) is None
 
 
 def test_build_does_not_collect_container_logs(docker_client) -> None:
     client = docker_client()
-    builder = DockerEventLogBuilder()
 
-    event_log = builder.build(
+    event_log = build_event_log(
         {
             "Action": "start",
             "id": "abcdef1234567890",
@@ -29,9 +26,7 @@ def test_build_does_not_collect_container_logs(docker_client) -> None:
 
 
 def test_build_uses_actor_id_when_event_has_no_top_level_id() -> None:
-    builder = DockerEventLogBuilder()
-
-    event_log = builder.build(
+    event_log = build_event_log(
         {
             "Type": "container",
             "Action": "exec_die",
