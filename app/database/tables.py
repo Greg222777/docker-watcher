@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Text, text
+from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.session import Base
@@ -43,14 +43,3 @@ class MonitoredEventActionRecord(Base):
     __tablename__ = "monitored_event_actions"
 
     action: Mapped[str] = mapped_column(String, primary_key=True)
-
-
-class SchemaMigrationRecord(Base):
-    __tablename__ = "schema_migrations"
-
-    revision: Mapped[str] = mapped_column(String, primary_key=True)
-    applied_at: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        server_default=text("CURRENT_TIMESTAMP"),
-    )

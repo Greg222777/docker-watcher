@@ -2,7 +2,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.config import DB_PATH
-from app.database.schema import run_migrations
+from app.database.schema import init_schema
 from app.database.session import create_session_factory
 from app.database.tables import ContainerEventRecord
 from app.models import EventLog
@@ -15,9 +15,9 @@ class EventLogRepository:
 
     def init_db(self) -> None:
         """
-        Apply database migrations.
+        Initialize database tables.
         """
-        run_migrations(self.db_path)
+        init_schema(self.db_path)
 
     def save(self, event: EventLog) -> None:
         """
