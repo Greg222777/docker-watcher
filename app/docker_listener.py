@@ -10,7 +10,7 @@ from app.database import event_log_repository, monitored_event_action_repository
 from app.docker_events import build_event_log, write_event_log
 from app.docker_events.log_writer import LOG_DIR
 from app.models import DockerEventAction, EventLog
-from app.telegram_notifier import telegram_notifier
+from app.telegram_notifier import send_event_log
 
 logger = logging.getLogger(__name__)
 DOCKER_SOCKET_PATH = Path("/var/run/docker.sock")
@@ -50,7 +50,7 @@ class DockerListener:
 
         write_event_log(self.client, event_log, log_dir=self.log_dir)
         event_log_repository.save(event_log)
-        telegram_notifier.send_event_log(event_log)
+        send_event_log(event_log)
 
     def _should_handle(self, event_log: EventLog) -> bool:
         watched_docker_actions = self._get_watched_docker_actions()
