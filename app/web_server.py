@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from shutil import rmtree
 from threading import Thread
+from typing import Any, cast
 
 from flask import (
     Flask,
@@ -208,7 +209,7 @@ def _url_for_page(page: int) -> str:
     args["page"] = str(page)
     endpoint = request.endpoint or "events_page"
 
-    return url_for(endpoint, **args)
+    return url_for(endpoint, **cast(dict[str, Any], args))
 
 
 # Path safety and redirects

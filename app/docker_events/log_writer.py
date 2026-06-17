@@ -1,19 +1,29 @@
 import logging
 import re
 from pathlib import Path
+from typing import Any
 
 from app.config import LOG_DIR
 from app.models import EventLog
 
+docker_errors: Any
 try:
-    from docker.errors import APIError, NotFound
+    from docker import errors as imported_docker_errors
 except ModuleNotFoundError:
 
-    class APIError(Exception):
+    class DockerAPIError(Exception):
         pass
 
-    class NotFound(Exception):
+    class DockerNotFound(Exception):
         pass
+
+    class DockerErrors:
+        APIError = DockerAPIError
+        NotFound = DockerNotFound
+
+    docker_errors = DockerErrors()
+else:
+    docker_errors = imported_docker_errors
 
 
 LOG_TAIL_LINES = 200
@@ -23,7 +33,7 @@ logger = logging.getLogger(__name__)
 class ContainerLogWriter:
     def __init__(
         self,
-        client: object,
+        client: Any,
         log_dir: Path = LOG_DIR,
         tail_lines: int = LOG_TAIL_LINES,
     ) -> None:
@@ -45,13 +55,13 @@ class ContainerLogWriter:
         try:
             container = self.client.containers.get(container_id)
             logs = container.logs(tail=self.tail_lines, timestamps=True)
-        except NotFound:
+        except docker_errors.NotFound:
             logger.warning(
                 "Could not collect logs: container %s not found.",
                 container_id[:12],
             )
             return None
-        except APIError as error:
+        except docker_errors.APIError as error:
             logger.warning(
                 "Could not collect logs for %s: %s",
                 container_id[:12],

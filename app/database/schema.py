@@ -1,5 +1,6 @@
 from collections.abc import Callable, Iterable
 from pathlib import Path
+from typing import Any, cast
 
 from sqlalchemy import Connection, create_engine, inspect, select
 from sqlalchemy.orm import Session
@@ -18,8 +19,8 @@ Migration = Callable[[Connection], None]
 
 
 def _create_initial_schema(connection: Connection) -> None:
-    ContainerEventRecord.__table__.create(bind=connection)
-    MonitoredEventActionRecord.__table__.create(bind=connection)
+    cast(Any, ContainerEventRecord.__table__).create(bind=connection)
+    cast(Any, MonitoredEventActionRecord.__table__).create(bind=connection)
 
 
 MIGRATIONS: list[tuple[str, Migration]] = [
@@ -35,7 +36,10 @@ def run_migrations(db_path: str | Path = DB_PATH) -> None:
     )
 
     with engine.begin() as connection:
-        SchemaMigrationRecord.__table__.create(bind=connection, checkfirst=True)
+        cast(Any, SchemaMigrationRecord.__table__).create(
+            bind=connection,
+            checkfirst=True,
+        )
         session = Session(bind=connection)
 
         if _has_existing_unversioned_schema(connection, session):
