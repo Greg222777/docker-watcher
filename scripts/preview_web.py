@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -7,7 +8,10 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 
 import app.web_server as web_server  # noqa: E402
-from app import database  # noqa: E402
+from app.database import (  # noqa: E402
+    EventLogRepository,
+    MonitoredEventActionRepository,
+)
 from app.database.schema import init_schema  # noqa: E402
 from app.models import EventLog  # noqa: E402
 from app.web_server import run_web_server  # noqa: E402
@@ -18,9 +22,9 @@ LOG_DIR = PREVIEW_DIR / "logs"
 
 
 def main() -> None:
-    seed_mock_data()
+    event_log_repository, monitoring_repository = preview_repositories()
+    seed_mock_data(event_log_repository, monitoring_repository)
 
-    database.event_log_repository.db_path = str(DB_PATH)
     web_server.LOG_DIR = LOG_DIR
 
     os.environ.setdefault("WEB_PORT", "8000")
@@ -30,15 +34,25 @@ def main() -> None:
     run_web_server()
 
 
-def seed_mock_data() -> None:
+def preview_repositories() -> tuple[EventLogRepository, MonitoredEventActionRepository]:
+    event_log_repository = EventLogRepository(str(DB_PATH))
+    monitoring_repository = MonitoredEventActionRepository(str(DB_PATH))
+    web_server.event_log_repository = event_log_repository
+    web_server.monitored_event_action_repository = monitoring_repository
+
+    return event_log_repository, monitoring_repository
+
+
+def seed_mock_data(
+    event_log_repository: EventLogRepository,
+    monitoring_repository: MonitoredEventActionRepository,
+) -> None:
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-    database.event_log_repository.db_path = str(DB_PATH)
-    database.monitored_event_action_repository.db_path = str(DB_PATH)
     init_schema(DB_PATH)
-    database.monitored_event_action_repository.seed_defaults()
-    database.event_log_repository.delete_all()
+    monitoring_repository.seed_defaults()
+    event_log_repository.delete_all()
     clear_logs()
 
     now = datetime.now().replace(microsecond=0)
@@ -123,7 +137,7 @@ def seed_mock_data() -> None:
     ]
 
     for event in events:
-        database.event_log_repository.save(event)
+        event_log_repository.save(event)
 
 
 def build_event(
@@ -141,7 +155,7 @@ def build_event(
     if log_body is not None:
         log_file_path = str(
             write_log_file(
-                id=id,
+                event_id=id,
                 container_name=container_name,
                 action=action,
                 created_at=created_at_value,
@@ -161,13 +175,13 @@ def build_event(
 
 
 def write_log_file(
-    id: int,
+    event_id: int,
     container_name: str,
     action: str,
     created_at: str,
     lines: list[str],
 ) -> Path:
-    filename = f"{id:02d}_{sanitize(container_name)}_{sanitize(action)}.log"
+    filename = f"{event_id:02d}_{sanitize(container_name)}_{sanitize(action)}.log"
     log_file = LOG_DIR / filename
     timestamped_lines = [f"{created_at} {line}" for line in lines]
     log_file.write_text("\n".join(timestamped_lines) + "\n", encoding="utf-8")
@@ -175,13 +189,7 @@ def write_log_file(
 
 
 def sanitize(value: str) -> str:
-    return (
-        "".join(
-            character if character.isalnum() or character in "._-" else "-"
-            for character in value
-        ).strip("-")
-        or "unknown"
-    )
+    return re.sub(r"[^a-zA-Z0-9_.-]+", "-", value).strip("-") or "unknown"
 
 
 def clear_logs() -> None:
