@@ -17,7 +17,7 @@ class EventLog:
         lines = [
             "<b>Docker event</b>",
             f"<b>Container:</b> {escape(self.container_name)}",
-            f"<b>ID:</b> <code>{escape(self.container_id[:12])}</code>",
+            f"<b>ID:</b> <code>{escape(self.container_id)}</code>",
             f"<b>Action:</b> {escape(self.action)}",
             f"<b>Date:</b> {escape(self.created_at)}",
         ]

@@ -7,7 +7,7 @@ import docker
 from docker.errors import DockerException
 
 from app.database import event_log_repository, monitored_event_action_repository
-from app.docker_events import ContainerLogWriter, build_event_log
+from app.docker_events import build_event_log, write_event_log
 from app.docker_events.log_writer import LOG_DIR
 from app.models import DockerEventAction, EventLog
 from app.telegram_notifier import telegram_notifier
@@ -25,7 +25,7 @@ class DockerListener:
     ) -> None:
         self.client = client or docker.from_env()
         self.watched_docker_actions = watched_docker_actions
-        self.log_writer = ContainerLogWriter(self.client, log_dir=log_dir)
+        self.log_dir = log_dir
 
     def listen(self) -> None:
         logger.info("Docker Watcher is listening for container events...")
@@ -45,10 +45,10 @@ class DockerListener:
             "Docker event received: %s %s %s",
             event_log.container_name,
             event_log.action,
-            event_log.container_id[:12],
+            event_log.container_id,
         )
 
-        self.log_writer.write_event_log(event_log)
+        write_event_log(self.client, event_log, log_dir=self.log_dir)
         event_log_repository.save(event_log)
         telegram_notifier.send_event_log(event_log)
 

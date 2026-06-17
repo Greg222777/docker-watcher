@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.docker_events import ContainerLogWriter, build_event_log
+from app.docker_events import build_event_log, write_event_log
 from app.models import EventLog
 
 
@@ -54,7 +54,6 @@ def test_write_event_log_uses_configured_log_dir(
     docker_client,
     test_log_dir,
 ) -> None:
-    writer = ContainerLogWriter(docker_client(), log_dir=test_log_dir)
     event_log = EventLog(
         container_id="abcdef1234567890",
         container_name="api service",
@@ -62,7 +61,7 @@ def test_write_event_log_uses_configured_log_dir(
         created_at="2026-06-02T10:00:00",
     )
 
-    writer.write_event_log(event_log)
+    write_event_log(docker_client(), event_log, log_dir=test_log_dir)
 
     assert event_log.log_file_path is not None
     log_file = Path(event_log.log_file_path)

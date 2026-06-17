@@ -12,76 +12,62 @@ LOG_TAIL_LINES = 200
 logger = logging.getLogger(__name__)
 
 
-class ContainerLogWriter:
-    def __init__(
-        self,
-        client: Any,
-        log_dir: Path = LOG_DIR,
-        tail_lines: int = LOG_TAIL_LINES,
-    ) -> None:
-        self.client = client
-        self.log_dir = log_dir
-        self.tail_lines = tail_lines
+def write_event_log(
+    client: Any,
+    event_log: EventLog,
+    log_dir: Path = LOG_DIR,
+    tail_lines: int = LOG_TAIL_LINES,
+) -> None:
+    # Docker can remove a container before we get a chance to read its logs.
+    try:
+        container = client.containers.get(event_log.container_id)
+        logs = container.logs(tail=tail_lines, timestamps=True)
+    except NotFound:
+        logger.warning(
+            "Could not collect logs: container %s not found.",
+            event_log.container_id,
+        )
+        return
+    except APIError as error:
+        logger.warning(
+            "Could not collect logs for %s: %s",
+            event_log.container_id,
+            error,
+        )
+        return
 
-    def write_event_log(self, event_log: EventLog) -> None:
-        event_log.log_file_path = self._write_container_logs(
-            container_id=event_log.container_id,
+    # Only mark the event with a log path after the file is safely written.
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        log_file_path = log_dir / _build_log_filename(
             container_name=event_log.container_name,
+            container_id=event_log.container_id,
             action=event_log.action,
             created_at=event_log.created_at,
         )
 
-    def _write_container_logs(
-        self, container_id: str, container_name: str, action: str, created_at: str
-    ) -> str | None:
-        try:
-            container = self.client.containers.get(container_id)
-            logs = container.logs(tail=self.tail_lines, timestamps=True)
-        except NotFound:
-            logger.warning(
-                "Could not collect logs: container %s not found.",
-                container_id[:12],
-            )
-            return None
-        except APIError as error:
-            logger.warning(
-                "Could not collect logs for %s: %s",
-                container_id[:12],
-                error,
-            )
-            return None
+        log_file_path.write_text(
+            logs.decode("utf-8", errors="replace"), encoding="utf-8"
+        )
+        event_log.log_file_path = str(log_file_path)
+    except OSError as error:
+        logger.error(
+            "Could not write logs for %s: %s",
+            event_log.container_id,
+            error,
+        )
 
-        try:
-            self.log_dir.mkdir(parents=True, exist_ok=True)
 
-            log_file_path = self.log_dir / self._build_log_filename(
-                container_name=container_name,
-                container_id=container_id,
-                action=action,
-                created_at=created_at,
-            )
+def _build_log_filename(
+    container_name: str, container_id: str, action: str, created_at: str
+) -> str:
+    safe_name = _sanitize_filename_part(container_name)
+    safe_action = _sanitize_filename_part(action)
+    safe_timestamp = _sanitize_filename_part(created_at)
 
-            log_file_path.write_text(
-                logs.decode("utf-8", errors="replace"), encoding="utf-8"
-            )
-        except OSError as error:
-            logger.error(
-                "Could not write logs for %s: %s",
-                container_id[:12],
-                error,
-            )
-            return None
+    return f"{safe_timestamp}_{safe_name}_{safe_action}_{container_id}.txt"
 
-        return str(log_file_path)
 
-    def _build_log_filename(
-        self, container_name: str, container_id: str, action: str, created_at: str
-    ) -> str:
-        safe_name = self._sanitize_filename_part(container_name)
-        safe_action = self._sanitize_filename_part(action)
-        safe_timestamp = self._sanitize_filename_part(created_at)
-
-        return f"{safe_timestamp}_{safe_name}_{safe_action}_{container_id[:12]}.txt"
-
-    def _sanitize_filename_part(self, value: str) -> str:
-        return re.sub(r"[^a-zA-Z0-9_.-]+", "-", value).strip("-") or "unknown"
+def _sanitize_filename_part(value: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_.-]+", "-", value).strip("-") or "unknown"
