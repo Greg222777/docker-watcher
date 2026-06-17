@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from app.database import EventLogRepository
+from app.database.schema import init_schema
 from app.models import EventLog
 
 TEST_DIR = Path(__file__).resolve().parent
@@ -24,7 +25,7 @@ def db_path() -> Path:
 
 def test_event_log_repository_saves_and_retrieves_events(db_path) -> None:
     repository = EventLogRepository(str(db_path))
-    repository.init_db()
+    init_schema(db_path)
     repository.save(
         EventLog(
             container_name="api",
@@ -50,7 +51,7 @@ def test_event_log_repository_saves_and_retrieves_events(db_path) -> None:
 
 def test_event_log_repository_filters_and_counts_events(db_path) -> None:
     repository = EventLogRepository(str(db_path))
-    repository.init_db()
+    init_schema(db_path)
     repository.save(
         EventLog(
             container_name="api",

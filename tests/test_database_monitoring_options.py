@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from app.database import MonitoredEventActionRepository
+from app.database.schema import init_schema
 from app.models import DEFAULT_MONITORED_EVENT_ACTIONS, DockerEventAction
 
 TEST_DIR = Path(__file__).resolve().parent
@@ -22,19 +23,21 @@ def db_path() -> Path:
         pass
 
 
-def test_init_db_seeds_default_monitored_actions(db_path) -> None:
+def test_seed_defaults_seeds_default_monitored_actions(db_path) -> None:
     repository = MonitoredEventActionRepository(str(db_path))
+    init_schema(db_path)
 
-    repository.init_db()
+    repository.seed_defaults()
 
     assert repository.select_all() == DEFAULT_MONITORED_EVENT_ACTIONS
 
 
-def test_init_db_preserves_user_selection(db_path) -> None:
+def test_seed_defaults_preserves_user_selection(db_path) -> None:
     repository = MonitoredEventActionRepository(str(db_path))
-    repository.init_db()
+    init_schema(db_path)
+    repository.seed_defaults()
     repository.replace_all({DockerEventAction.DIE, DockerEventAction.OOM})
 
-    repository.init_db()
+    repository.seed_defaults()
 
     assert repository.select_all() == {DockerEventAction.DIE, DockerEventAction.OOM}

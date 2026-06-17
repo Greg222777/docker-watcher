@@ -8,6 +8,7 @@ sys.path.insert(0, str(ROOT_DIR))
 
 import app.web_server as web_server  # noqa: E402
 from app import database  # noqa: E402
+from app.database.schema import init_schema  # noqa: E402
 from app.models import EventLog  # noqa: E402
 from app.web_server import run_web_server  # noqa: E402
 
@@ -35,8 +36,8 @@ def seed_mock_data() -> None:
 
     database.event_log_repository.db_path = str(DB_PATH)
     database.monitored_event_action_repository.db_path = str(DB_PATH)
-    database.event_log_repository.init_db()
-    database.monitored_event_action_repository.init_db()
+    init_schema(DB_PATH)
+    database.monitored_event_action_repository.seed_defaults()
     database.event_log_repository.delete_all()
     clear_logs()
 

@@ -2,7 +2,6 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.config import DB_PATH
-from app.database.schema import init_schema
 from app.database.session import create_session_factory
 from app.database.tables import ContainerEventRecord
 from app.models import EventLog
@@ -12,12 +11,6 @@ class EventLogRepository:
     def __init__(self, db_path: str | None = None) -> None:
         self.db_path = str(db_path or DB_PATH)
         self.session_factory = create_session_factory(self.db_path)
-
-    def init_db(self) -> None:
-        """
-        Initialize database tables.
-        """
-        init_schema(self.db_path)
 
     def save(self, event: EventLog) -> None:
         """
