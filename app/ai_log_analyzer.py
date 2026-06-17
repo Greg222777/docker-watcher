@@ -5,7 +5,7 @@ from typing import Any
 import requests
 from requests import RequestException
 
-from app.models import EventLog
+from app.models.event_log import EventLog
 
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 OPENAI_MODEL = "gpt-4o-mini"

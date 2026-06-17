@@ -9,13 +9,9 @@ class Base(DeclarativeBase):
     pass
 
 
-def build_database_url(db_path: str | Path) -> str:
-    return f"sqlite:///{Path(db_path)}"
-
-
 def create_session_factory(db_path: str | Path) -> sessionmaker:
     engine = create_engine(
-        build_database_url(db_path),
+        f"sqlite:///{Path(db_path)}",
         future=True,
         poolclass=NullPool,
     )

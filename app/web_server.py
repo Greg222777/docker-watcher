@@ -2,7 +2,6 @@ import logging
 import os
 from pathlib import Path
 from shutil import rmtree
-from threading import Thread
 
 from flask import (
     Flask,
@@ -18,7 +17,8 @@ from flask import (
 from app.ai_log_analyzer import AILogAnalysisError, analyze_event_log
 from app.config import LOG_DIR
 from app.database import event_log_repository, monitored_event_action_repository
-from app.models import WATCHED_DOCKER_ACTIONS, DockerEventAction, EventLog
+from app.models.docker_event_action import WATCHED_DOCKER_ACTIONS, DockerEventAction
+from app.models.event_log import EventLog
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
@@ -216,9 +216,3 @@ def run_web_server() -> None:
         threaded=True,
         use_reloader=False,
     )
-
-
-def start_web_server() -> Thread:
-    thread = Thread(target=run_web_server, daemon=True)
-    thread.start()
-    return thread

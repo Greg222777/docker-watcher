@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from app.models import EventLog
+from app.models.event_log import EventLog
 
 
 def build_event_log(event: dict[str, Any]) -> EventLog | None:

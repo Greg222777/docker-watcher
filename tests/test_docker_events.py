@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from app.docker_events import build_event_log, write_event_log
-from app.models import EventLog
+from app.docker_events.event_log_builder import build_event_log
+from app.docker_events.log_writer import write_event_log
+from app.models.event_log import EventLog
 
 
 def test_build_returns_none_for_incomplete_event() -> None:

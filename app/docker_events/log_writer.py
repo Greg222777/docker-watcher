@@ -6,7 +6,7 @@ from typing import Any
 from docker.errors import APIError, NotFound
 
 from app.config import LOG_DIR
-from app.models import EventLog
+from app.models.event_log import EventLog
 
 LOG_TAIL_LINES = 200
 logger = logging.getLogger(__name__)

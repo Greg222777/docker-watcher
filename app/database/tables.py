@@ -2,7 +2,7 @@ from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.session import Base
-from app.models import EventLog
+from app.models.event_log import EventLog
 
 
 class ContainerEventRecord(Base):

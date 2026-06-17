@@ -13,7 +13,7 @@ from app.database import (  # noqa: E402
     MonitoredEventActionRepository,
 )
 from app.database.schema import init_schema  # noqa: E402
-from app.models import EventLog  # noqa: E402
+from app.models.event_log import EventLog  # noqa: E402
 from app.web_server import run_web_server  # noqa: E402
 
 PREVIEW_DIR = Path("data/mock-preview").resolve()

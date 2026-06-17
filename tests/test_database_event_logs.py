@@ -1,55 +1,44 @@
-from pathlib import Path
-from uuid import uuid4
-
-import pytest
-
 from app.database import EventLogRepository
 from app.database.schema import init_schema
-from app.models import EventLog
-
-TEST_DIR = Path(__file__).resolve().parent
+from app.models.event_log import EventLog
 
 
-@pytest.fixture
-def db_path() -> Path:
-    path = TEST_DIR / f"event_logs_{uuid4().hex}.db"
-
-    yield path
-
-    try:
-        if path.exists():
-            path.unlink()
-    except PermissionError:
-        pass
-
-
-def test_event_log_repository_saves_and_retrieves_events(db_path) -> None:
+def test_event_log_repository_saves_and_retrieves_events(tmp_path) -> None:
+    db_path = tmp_path / "docker_events.db"
     repository = EventLogRepository(str(db_path))
     init_schema(db_path)
-    repository.save(
-        EventLog(
-            container_name="api",
-            container_id="abcdef1234567890",
-            action="die",
-            exit_code="1",
-            log_file_path="/data/logs/api.log",
-            created_at="2026-06-02T10:00:00",
-        )
+    event = EventLog(
+        container_name="api",
+        container_id="abcdef1234567890",
+        action="die",
+        exit_code="1",
+        log_file_path="/data/logs/api.log",
+        created_at="2026-06-02T10:00:00",
     )
 
-    events = repository.select_all()
+    repository.save(event)
+    events = repository.select_filtered(
+        start_timestamp="",
+        end_timestamp="",
+        container_filter="",
+        action_filter="",
+        limit=10,
+        offset=0,
+    )
 
     assert len(events) == 1
-    assert events[0].id is not None
-    assert events[0].container_name == "api"
-    assert events[0].container_id == "abcdef1234567890"
-    assert events[0].action == "die"
-    assert events[0].exit_code == "1"
-    assert events[0].log_file_path == "/data/logs/api.log"
-    assert events[0].created_at == "2026-06-02T10:00:00"
+    saved_event = events[0]
+    assert saved_event.id is not None
+    assert saved_event.container_name == "api"
+    assert saved_event.container_id == "abcdef1234567890"
+    assert saved_event.action == "die"
+    assert saved_event.exit_code == "1"
+    assert saved_event.log_file_path == "/data/logs/api.log"
+    assert saved_event.created_at == "2026-06-02T10:00:00"
 
 
-def test_event_log_repository_filters_and_counts_events(db_path) -> None:
+def test_event_log_repository_filters_and_counts_events(tmp_path) -> None:
+    db_path = tmp_path / "docker_events.db"
     repository = EventLogRepository(str(db_path))
     init_schema(db_path)
     repository.save(

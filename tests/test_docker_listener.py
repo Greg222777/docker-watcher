@@ -6,7 +6,8 @@ from app.docker_listener import (
     _log_docker_socket_state,
     listen_to_docker_events,
 )
-from app.models import DockerEventAction, EventLog
+from app.models.docker_event_action import DockerEventAction
+from app.models.event_log import EventLog
 
 
 def test_listen_handles_valid_container_event(

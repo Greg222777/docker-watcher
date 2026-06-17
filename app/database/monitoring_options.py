@@ -3,7 +3,10 @@ from sqlalchemy import func, select
 from app.config import DB_PATH
 from app.database.session import create_session_factory
 from app.database.tables import MonitoredEventActionRecord
-from app.models import DEFAULT_MONITORED_EVENT_ACTIONS, DockerEventAction
+from app.models.docker_event_action import (
+    DEFAULT_MONITORED_EVENT_ACTIONS,
+    DockerEventAction,
+)
 
 
 class MonitoredEventActionRepository:

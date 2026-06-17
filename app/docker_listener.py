@@ -7,9 +7,10 @@ import docker
 from docker.errors import DockerException
 
 from app.database import event_log_repository, monitored_event_action_repository
-from app.docker_events import build_event_log, write_event_log
-from app.docker_events.log_writer import LOG_DIR
-from app.models import DockerEventAction, EventLog
+from app.docker_events.event_log_builder import build_event_log
+from app.docker_events.log_writer import LOG_DIR, write_event_log
+from app.models.docker_event_action import DockerEventAction
+from app.models.event_log import EventLog
 from app.telegram_notifier import send_event_log
 
 logger = logging.getLogger(__name__)

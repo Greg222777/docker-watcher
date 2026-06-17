@@ -3,7 +3,8 @@ from unittest.mock import patch
 import pytest
 
 from app import web_server
-from app.models import DockerEventAction, EventLog
+from app.models.docker_event_action import DockerEventAction
+from app.models.event_log import EventLog
 
 
 @pytest.fixture

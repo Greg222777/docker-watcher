@@ -4,7 +4,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.config import DB_PATH
 from app.database.session import create_session_factory
 from app.database.tables import ContainerEventRecord
-from app.models import EventLog
+from app.models.event_log import EventLog
 
 
 class EventLogRepository:
@@ -88,19 +88,6 @@ class EventLogRepository:
             )
 
             return int(count or 0)
-
-    def select_all(self) -> list[EventLog]:
-        """
-        Retrieve all events ordered by creation date descending.
-        """
-        with self.session_factory() as session:
-            records = session.scalars(
-                select(ContainerEventRecord).order_by(
-                    ContainerEventRecord.created_at.desc()
-                )
-            )
-
-            return [record.to_event_log() for record in records]
 
     def _build_filters(
         self,

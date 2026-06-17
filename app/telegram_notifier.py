@@ -4,7 +4,7 @@ import os
 import requests
 from requests import RequestException
 
-from app.models import EventLog
+from app.models.event_log import EventLog
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")

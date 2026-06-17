@@ -9,7 +9,7 @@ from app.ai_log_analyzer import (
     _read_log_file,
     analyze_event_log,
 )
-from app.models import EventLog
+from app.models.event_log import EventLog
 
 
 def build_event() -> EventLog:
