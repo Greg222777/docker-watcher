@@ -14,33 +14,21 @@ def build_event_log(event: dict[str, Any]) -> EventLog | None:
 
     attributes = actor.get("Attributes", {})
     container_name = attributes.get("name", "unknown")
-
-    return EventLog(
-        container_name=container_name,
-        container_id=container_id,
-        action=action,
-        exit_code=extract_exit_code(attributes),
-        created_at=extract_created_at(event),
-    )
-
-
-def extract_exit_code(attributes: dict[str, object]) -> str | None:
     exit_code = (
         attributes.get("exitCode")
         or attributes.get("exit_code")
         or attributes.get("ExitCode")
     )
-
-    if exit_code is None:
-        return None
-
-    return str(exit_code)
-
-
-def extract_created_at(event: dict[str, Any]) -> str:
     event_timestamp = event.get("time")
 
-    if event_timestamp is None:
-        return datetime.now().isoformat()
-
-    return datetime.fromtimestamp(event_timestamp).isoformat()
+    return EventLog(
+        container_name=container_name,
+        container_id=container_id,
+        action=action,
+        exit_code=None if exit_code is None else str(exit_code),
+        created_at=(
+            datetime.now().isoformat()
+            if event_timestamp is None
+            else datetime.fromtimestamp(event_timestamp).isoformat()
+        ),
+    )
