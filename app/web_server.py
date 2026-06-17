@@ -88,7 +88,7 @@ def events_page() -> str:
 # Log files and AI analysis
 @app.get("/logs/<path:filename>")
 def log_file(filename: str):
-    log_path = (LOG_DIR / filename).resolve()
+    log_path = _log_path(filename)
 
     if not _is_safe_log_path(log_path) or not log_path.is_file():
         abort(404)
@@ -187,13 +187,17 @@ def _is_safe_log_path(log_path: Path) -> bool:
     return log_path == LOG_DIR or LOG_DIR in log_path.parents
 
 
+def _log_path(filename: str) -> Path:
+    return (LOG_DIR / Path(filename).name).resolve()
+
+
 def _event_and_log_path_or_404(event_id: int):
     event = event_log_repository.select_by_id(event_id)
 
     if not event or not event.log_file_path:
         abort(404)
 
-    log_path = (LOG_DIR / Path(event.log_file_path).name).resolve()
+    log_path = _log_path(event.log_file_path)
 
     if not _is_safe_log_path(log_path) or not log_path.is_file():
         abort(404)
