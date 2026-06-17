@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from shutil import rmtree
 from threading import Thread
-from typing import Any, cast
 
 from flask import (
     Flask,
@@ -19,7 +18,7 @@ from flask import (
 from app.ai_log_analyzer import AILogAnalysisError, OpenAILogAnalyzer
 from app.config import LOG_DIR
 from app.database import event_log_repository, monitored_event_action_repository
-from app.models import WATCHED_DOCKER_ACTIONS, DockerEventAction
+from app.models import WATCHED_DOCKER_ACTIONS, DockerEventAction, EventLog
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
@@ -98,7 +97,7 @@ def log_file(filename: str):
 
 @app.get("/events/<int:event_id>/ai-analysis")
 def ai_log_analysis(event_id: int):
-    event, log_path = _event_and_log_path_or_404(event_id)
+    event, log_path = _event_log(event_id)
 
     return render_template(
         "ai_analysis.html",
@@ -110,7 +109,7 @@ def ai_log_analysis(event_id: int):
 
 @app.get("/events/<int:event_id>/ai-analysis/result")
 def ai_log_analysis_result(event_id: int):
-    event, log_path = _event_and_log_path_or_404(event_id)
+    event, log_path = _event_log(event_id)
 
     try:
         analysis = OpenAILogAnalyzer().analyze_event_log(event=event, log_path=log_path)
@@ -175,7 +174,8 @@ def _url_for_page(page: int) -> str:
     args["page"] = str(page)
     endpoint = request.endpoint or "events_page"
 
-    return url_for(endpoint, **cast(dict[str, Any], args))
+    # Flask route args are dynamic; mypy only knows url_for's reserved kwargs.
+    return url_for(endpoint, **args)  # type: ignore[arg-type]
 
 
 # Path helpers
@@ -188,10 +188,11 @@ def _is_safe_log_path(log_path: Path) -> bool:
 
 
 def _log_path(filename: str) -> Path:
+    # Only trust the filename; event log paths may come from stored records.
     return (LOG_DIR / Path(filename).name).resolve()
 
 
-def _event_and_log_path_or_404(event_id: int):
+def _event_log(event_id: int) -> tuple[EventLog, Path]:
     event = event_log_repository.select_by_id(event_id)
 
     if not event or not event.log_file_path:
@@ -199,6 +200,7 @@ def _event_and_log_path_or_404(event_id: int):
 
     log_path = _log_path(event.log_file_path)
 
+    # The file may have been deleted after the event was stored.
     if not _is_safe_log_path(log_path) or not log_path.is_file():
         abort(404)
 
