@@ -4,8 +4,6 @@ import os
 import requests
 from requests import RequestException
 
-from app.models.event_log import EventLog
-
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 TELEGRAM_API_BASE_URL = "https://api.telegram.org"
@@ -25,7 +23,3 @@ def send_message(message: str) -> None:
         response.raise_for_status()
     except RequestException as error:
         logger.warning("Could not send Telegram message: %s", error)
-
-
-def send_event_log(event: EventLog) -> None:
-    send_message(event.to_telegram_message())

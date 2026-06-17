@@ -13,23 +13,14 @@ class EventLogRepository:
         self.session_factory = create_session_factory(self.db_path)
 
     def save(self, event: EventLog) -> None:
-        """
-        Save a Docker container event in the database.
-        """
         with self.session_factory.begin() as session:
             session.add(ContainerEventRecord.from_event_log(event))
 
     def delete_all(self) -> None:
-        """
-        Delete all events from the database.
-        """
         with self.session_factory.begin() as session:
             session.query(ContainerEventRecord).delete()
 
     def select_by_id(self, event_id: int) -> EventLog | None:
-        """
-        Retrieve one event by its database ID.
-        """
         with self.session_factory() as session:
             record = session.get(ContainerEventRecord, event_id)
 
@@ -44,9 +35,6 @@ class EventLogRepository:
         limit: int,
         offset: int,
     ) -> list[EventLog]:
-        """
-        Retrieve a filtered page of events ordered by creation date descending.
-        """
         filters = self._build_filters(
             start_timestamp=start_timestamp,
             end_timestamp=end_timestamp,
@@ -72,9 +60,6 @@ class EventLogRepository:
         container_filter: str,
         action_filter: str,
     ) -> int:
-        """
-        Count events matching the same filters used for paginated retrieval.
-        """
         filters = self._build_filters(
             start_timestamp=start_timestamp,
             end_timestamp=end_timestamp,

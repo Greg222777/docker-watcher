@@ -22,25 +22,19 @@ LOG_DIR = PREVIEW_DIR / "logs"
 
 
 def main() -> None:
-    event_log_repository, monitoring_repository = preview_repositories()
-    seed_mock_data(event_log_repository, monitoring_repository)
+    event_log_repository = EventLogRepository(str(DB_PATH))
+    monitoring_repository = MonitoredEventActionRepository(str(DB_PATH))
 
     web_server.LOG_DIR = LOG_DIR
+    web_server.event_log_repository = event_log_repository
+    web_server.monitored_event_action_repository = monitoring_repository
+    seed_mock_data(event_log_repository, monitoring_repository)
 
     os.environ.setdefault("WEB_PORT", "8000")
     web_server.WEB_PORT = int(os.environ["WEB_PORT"])
 
     print("Mock web preview loaded with sample Docker events.")
     run_web_server()
-
-
-def preview_repositories() -> tuple[EventLogRepository, MonitoredEventActionRepository]:
-    event_log_repository = EventLogRepository(str(DB_PATH))
-    monitoring_repository = MonitoredEventActionRepository(str(DB_PATH))
-    web_server.event_log_repository = event_log_repository
-    web_server.monitored_event_action_repository = monitoring_repository
-
-    return event_log_repository, monitoring_repository
 
 
 def seed_mock_data(

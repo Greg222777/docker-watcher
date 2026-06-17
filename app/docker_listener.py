@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Collection
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +10,7 @@ from app.docker_events.event_log_builder import build_event_log
 from app.docker_events.log_writer import LOG_DIR, write_event_log
 from app.models.docker_event_action import DockerEventAction
 from app.models.event_log import EventLog
-from app.telegram_notifier import send_event_log
+from app.telegram_notifier import send_message
 
 logger = logging.getLogger(__name__)
 DOCKER_SOCKET_PATH = Path("/var/run/docker.sock")
@@ -21,11 +20,11 @@ class DockerListener:
     def __init__(
         self,
         client: Any | None = None,
-        watched_docker_actions: Collection[DockerEventAction] = frozenset(),
+        watched_docker_actions: set[DockerEventAction] | None = None,
         log_dir: Path = LOG_DIR,
     ) -> None:
         self.client = client or docker.from_env()
-        self.watched_docker_actions = watched_docker_actions
+        self.watched_docker_actions = watched_docker_actions or set()
         self.log_dir = log_dir
 
     def listen(self) -> None:
@@ -51,20 +50,17 @@ class DockerListener:
 
         write_event_log(self.client, event_log, log_dir=self.log_dir)
         event_log_repository.save(event_log)
-        send_event_log(event_log)
+        send_message(event_log.to_telegram_message())
 
     def _should_handle(self, event_log: EventLog) -> bool:
-        watched_docker_actions = self._get_watched_docker_actions()
+        watched_docker_actions = (
+            self.watched_docker_actions
+            or monitored_event_action_repository.select_all()
+        )
 
         return any(
             action.matches(event_log.action) for action in watched_docker_actions
         )
-
-    def _get_watched_docker_actions(self) -> Collection[DockerEventAction]:
-        if self.watched_docker_actions:
-            return self.watched_docker_actions
-
-        return monitored_event_action_repository.select_all()
 
 
 def listen_to_docker_events() -> None:

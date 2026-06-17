@@ -71,32 +71,7 @@ class DockerEventAction(StrEnum):
         return self.value == self.normalize(action)
 
 
-WATCHED_DOCKER_ACTIONS = [
-    DockerEventAction.ATTACH,
-    DockerEventAction.COMMIT,
-    DockerEventAction.COPY,
-    DockerEventAction.CREATE,
-    DockerEventAction.DESTROY,
-    DockerEventAction.DETACH,
-    DockerEventAction.DIE,
-    DockerEventAction.EXEC_CREATE,
-    DockerEventAction.EXEC_DETACH,
-    DockerEventAction.EXEC_DIE,
-    DockerEventAction.EXEC_START,
-    DockerEventAction.EXPORT,
-    DockerEventAction.HEALTH_STATUS,
-    DockerEventAction.KILL,
-    DockerEventAction.OOM,
-    DockerEventAction.PAUSE,
-    DockerEventAction.RENAME,
-    DockerEventAction.RESIZE,
-    DockerEventAction.RESTART,
-    DockerEventAction.START,
-    DockerEventAction.STOP,
-    DockerEventAction.TOP,
-    DockerEventAction.UNPAUSE,
-    DockerEventAction.UPDATE,
-]
+WATCHED_DOCKER_ACTIONS: set[DockerEventAction] = set(DockerEventAction)
 
 DEFAULT_MONITORED_EVENT_ACTIONS = {
     DockerEventAction.DESTROY,
