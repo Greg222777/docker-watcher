@@ -41,17 +41,6 @@ class EventFilters:
     action: str
 
 
-@dataclass(frozen=True)
-class Pagination:
-    page: int
-    per_page: int
-    total_pages: int
-
-    @property
-    def offset(self) -> int:
-        return (self.page - 1) * self.per_page
-
-
 @app.template_filter("basename")
 def basename(value: str) -> str:
     return Path(value).name
@@ -67,33 +56,34 @@ def events_page() -> str:
         container_filter=filters.container,
         action_filter=filters.action,
     )
-    pagination = _pagination_for(
+    page, total_pages = _pagination_for(
         total_events=total_events,
         requested_page=_positive_int(request.args.get("page"), default=1),
     )
+    offset = (page - 1) * EVENTS_PER_PAGE
     events = event_log_repository.select_filtered(
         start_timestamp=filters.start_timestamp,
         end_timestamp=filters.end_timestamp,
         container_filter=filters.container,
         action_filter=filters.action,
-        limit=pagination.per_page,
-        offset=pagination.offset,
+        limit=EVENTS_PER_PAGE,
+        offset=offset,
     )
 
     return render_template(
         "events.html",
         actions=WATCHED_DOCKER_ACTIONS,
         container_filter=filters.container,
-        current_path=_current_path(),
+        current_path=request.full_path.rstrip("?"),
         end_filter=filters.end,
         event_filter=filters.event,
         events=events,
         monitored_actions=monitored_event_action_repository.select_all(),
-        page=pagination.page,
-        per_page=pagination.per_page,
+        page=page,
+        per_page=EVENTS_PER_PAGE,
         start_filter=filters.start,
         total_events=total_events,
-        total_pages=pagination.total_pages,
+        total_pages=total_pages,
         url_for_page=_url_for_page,
     )
 
@@ -194,14 +184,10 @@ def _positive_int(value: str | None, default: int) -> int:
 
 
 # Pagination
-def _pagination_for(total_events: int, requested_page: int) -> Pagination:
+def _pagination_for(total_events: int, requested_page: int) -> tuple[int, int]:
     total_pages = max(1, (total_events + EVENTS_PER_PAGE - 1) // EVENTS_PER_PAGE)
 
-    return Pagination(
-        page=min(requested_page, total_pages),
-        per_page=EVENTS_PER_PAGE,
-        total_pages=total_pages,
-    )
+    return min(requested_page, total_pages), total_pages
 
 
 def _url_for_page(page: int) -> str:
@@ -233,10 +219,6 @@ def _event_and_log_path_or_404(event_id: int):
         abort(404)
 
     return event, log_path
-
-
-def _current_path() -> str:
-    return request.full_path.rstrip("?")
 
 
 def run_web_server() -> None:
