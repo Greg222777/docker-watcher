@@ -1,6 +1,5 @@
 import logging
 import os
-from dataclasses import dataclass
 from pathlib import Path
 from shutil import rmtree
 from threading import Thread
@@ -30,31 +29,29 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 
-@dataclass(frozen=True)
-class EventFilters:
-    container: str
-    event: str
-    start: str
-    end: str
-    start_timestamp: str
-    end_timestamp: str
-    action: str
-
-
 @app.template_filter("basename")
 def basename(value: str) -> str:
     return Path(value).name
 
 
+# Event list
 @app.get("/")
 @app.get("/events")
 def events_page() -> str:
-    filters = _event_filters_from_request()
+    container_filter = request.args.get("container", "").strip()
+    event_filter = request.args.get("event", "").strip()
+    start_filter = request.args.get("start", "").strip()
+    end_filter = request.args.get("end", "").strip()
+    selected_action = DockerEventAction.from_raw(event_filter)
+    action_filter = selected_action.value if selected_action else ""
+    start_timestamp = _datetime_local_to_iso(start_filter)
+    end_timestamp = _datetime_local_to_iso(end_filter)
+
     total_events = event_log_repository.count_filtered(
-        start_timestamp=filters.start_timestamp,
-        end_timestamp=filters.end_timestamp,
-        container_filter=filters.container,
-        action_filter=filters.action,
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+        container_filter=container_filter,
+        action_filter=action_filter,
     )
     page, total_pages = _pagination_for(
         total_events=total_events,
@@ -62,10 +59,10 @@ def events_page() -> str:
     )
     offset = (page - 1) * EVENTS_PER_PAGE
     events = event_log_repository.select_filtered(
-        start_timestamp=filters.start_timestamp,
-        end_timestamp=filters.end_timestamp,
-        container_filter=filters.container,
-        action_filter=filters.action,
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+        container_filter=container_filter,
+        action_filter=action_filter,
         limit=EVENTS_PER_PAGE,
         offset=offset,
     )
@@ -73,21 +70,22 @@ def events_page() -> str:
     return render_template(
         "events.html",
         actions=WATCHED_DOCKER_ACTIONS,
-        container_filter=filters.container,
+        container_filter=container_filter,
         current_path=request.full_path.rstrip("?"),
-        end_filter=filters.end,
-        event_filter=filters.event,
+        end_filter=end_filter,
+        event_filter=event_filter,
         events=events,
         monitored_actions=monitored_event_action_repository.select_all(),
         page=page,
         per_page=EVENTS_PER_PAGE,
-        start_filter=filters.start,
+        start_filter=start_filter,
         total_events=total_events,
         total_pages=total_pages,
         url_for_page=_url_for_page,
     )
 
 
+# Log files and AI analysis
 @app.get("/logs/<path:filename>")
 def log_file(filename: str):
     log_path = (LOG_DIR / filename).resolve()
@@ -122,6 +120,7 @@ def ai_log_analysis_result(event_id: int):
     return jsonify({"analysis": analysis})
 
 
+# Mutations
 @app.post("/events/delete-all")
 def delete_all_events():
     event_log_repository.delete_all()
@@ -148,25 +147,7 @@ def save_monitoring_options():
     return redirect(_safe_redirect_path(request.form.get("redirect_to", "/")))
 
 
-# Request parsing and filter normalization
-def _event_filters_from_request() -> EventFilters:
-    container_filter = request.args.get("container", "").strip()
-    event_filter = request.args.get("event", "").strip()
-    start_filter = request.args.get("start", "").strip()
-    end_filter = request.args.get("end", "").strip()
-    selected_action = DockerEventAction.from_raw(event_filter)
-
-    return EventFilters(
-        container=container_filter,
-        event=event_filter,
-        start=start_filter,
-        end=end_filter,
-        start_timestamp=_datetime_local_to_iso(start_filter),
-        end_timestamp=_datetime_local_to_iso(end_filter),
-        action=selected_action.value if selected_action else "",
-    )
-
-
+# Request helpers
 def _datetime_local_to_iso(value: str) -> str:
     if not value:
         return ""
@@ -183,7 +164,6 @@ def _positive_int(value: str | None, default: int) -> int:
     return parsed_value if parsed_value > 0 else default
 
 
-# Pagination
 def _pagination_for(total_events: int, requested_page: int) -> tuple[int, int]:
     total_pages = max(1, (total_events + EVENTS_PER_PAGE - 1) // EVENTS_PER_PAGE)
 
@@ -198,7 +178,7 @@ def _url_for_page(page: int) -> str:
     return url_for(endpoint, **cast(dict[str, Any], args))
 
 
-# Path safety and redirects
+# Path helpers
 def _safe_redirect_path(path: str) -> str:
     return path if path.startswith("/") and not path.startswith("//") else "/"
 
@@ -221,6 +201,7 @@ def _event_and_log_path_or_404(event_id: int):
     return event, log_path
 
 
+# Server lifecycle
 def run_web_server() -> None:
     logger.info("Docker Watcher web UI is available on port %s.", WEB_PORT)
     app.run(
