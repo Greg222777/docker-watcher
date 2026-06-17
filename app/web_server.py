@@ -15,7 +15,7 @@ from flask import (
     url_for,
 )
 
-from app.ai_log_analyzer import AILogAnalysisError, OpenAILogAnalyzer
+from app.ai_log_analyzer import AILogAnalysisError, analyze_event_log
 from app.config import LOG_DIR
 from app.database import event_log_repository, monitored_event_action_repository
 from app.models import WATCHED_DOCKER_ACTIONS, DockerEventAction, EventLog
@@ -112,7 +112,7 @@ def ai_log_analysis_result(event_id: int):
     event, log_path = _event_log(event_id)
 
     try:
-        analysis = OpenAILogAnalyzer().analyze_event_log(event=event, log_path=log_path)
+        analysis = analyze_event_log(event=event, log_path=log_path)
     except AILogAnalysisError as error:
         return jsonify({"error": f"AI log analysis failed: {error}"}), 503
 

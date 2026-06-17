@@ -2,7 +2,13 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from app.ai_log_analyzer import MAX_LOG_CHARS, AILogAnalysisError, OpenAILogAnalyzer
+from app.ai_log_analyzer import (
+    MAX_LOG_CHARS,
+    AILogAnalysisError,
+    _build_prompt,
+    _read_log_file,
+    analyze_event_log,
+)
 from app.models import EventLog
 
 
@@ -19,9 +25,7 @@ def build_event() -> EventLog:
 
 
 def test_build_prompt_includes_context_event_metadata_and_log() -> None:
-    analyzer = OpenAILogAnalyzer(api_key="test-key")
-
-    prompt = analyzer._build_prompt(
+    prompt = _build_prompt(
         event=build_event(),
         log_content="FATAL persistent storage unavailable",
     )
@@ -45,12 +49,11 @@ def test_analyze_event_log_sends_prompt_to_openai(test_log_dir) -> None:
     with patch(
         "app.ai_log_analyzer.requests.Session.post", return_value=response
     ) as post:
-        analysis = OpenAILogAnalyzer(
-            api_key="test-key",
-            model="test-model",
-        ).analyze_event_log(
+        analysis = analyze_event_log(
             event=build_event(),
             log_path=log_path,
+            api_key="test-key",
+            model="test-model",
         )
 
     assert analysis == "Disk is full. Free space."
@@ -66,9 +69,10 @@ def test_analyze_event_log_requires_api_key(test_log_dir) -> None:
     log_path.write_text("container logs", encoding="utf-8")
 
     with pytest.raises(AILogAnalysisError, match="OPENAI_API_KEY is not set"):
-        OpenAILogAnalyzer(api_key="").analyze_event_log(
+        analyze_event_log(
             event=build_event(),
             log_path=log_path,
+            api_key="",
         )
 
 
@@ -76,7 +80,7 @@ def test_read_log_file_truncates_from_the_beginning(test_log_dir) -> None:
     log_path = test_log_dir / "event.log"
     log_path.write_text(f"start-{'x' * MAX_LOG_CHARS}", encoding="utf-8")
 
-    log_content = OpenAILogAnalyzer(api_key="test-key")._read_log_file(log_path)
+    log_content = _read_log_file(log_path)
 
     assert "6 characters omitted" in log_content
     assert log_content.endswith("x" * MAX_LOG_CHARS)

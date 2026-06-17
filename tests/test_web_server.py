@@ -257,7 +257,7 @@ def test_ai_log_analysis_result_returns_analysis(web_client, test_log_dir) -> No
             web_server.event_log_repository, "select_by_id", return_value=event
         ),
         patch.object(
-            web_server.OpenAILogAnalyzer,
+            web_server,
             "analyze_event_log",
             return_value="Fix disk space.",
         ),
