@@ -1,10 +1,10 @@
 from datetime import datetime
+from typing import Any
 
-from app.docker_events.types import DockerEvent
 from app.models import EventLog
 
 
-def build_event_log(event: DockerEvent) -> EventLog | None:
+def build_event_log(event: dict[str, Any]) -> EventLog | None:
     action = event.get("Action") or event.get("status")
     actor = event.get("Actor", {})
     container_id = event.get("id") or actor.get("ID")
@@ -37,7 +37,7 @@ def extract_exit_code(attributes: dict[str, object]) -> str | None:
     return str(exit_code)
 
 
-def extract_created_at(event: DockerEvent) -> str:
+def extract_created_at(event: dict[str, Any]) -> str:
     event_timestamp = event.get("time")
 
     if event_timestamp is None:
