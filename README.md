@@ -1,5 +1,11 @@
 # Docker Watcher 🐳
 
+[![GitHub stars](https://img.shields.io/github/stars/Greg222777/docker-watcher)](https://github.com/Greg222777/docker-watcher/stargazers)
+[![Version](https://img.shields.io/github/v/tag/Greg222777/docker-watcher)](https://github.com/Greg222777/docker-watcher/tags)
+[![CI](https://img.shields.io/github/actions/workflow/status/Greg222777/docker-watcher/ci.yml?branch=main)](https://github.com/Greg222777/docker-watcher/actions/workflows/ci.yml)
+[![Docker Pulls](https://img.shields.io/docker/pulls/gregorynowik/docker-watcher)](https://hub.docker.com/r/gregorynowik/docker-watcher)
+[![Docker Image Size](https://img.shields.io/docker/image-size/gregorynowik/docker-watcher/latest)](https://hub.docker.com/r/gregorynowik/docker-watcher)
+
 Docker Watcher monitors Docker container events, stores them locally in SQLite,
 captures recent container logs, and can send Telegram notifications when watched
 events happen.
