@@ -1,39 +1,17 @@
 from pathlib import Path
-from uuid import uuid4
 
 import pytest
 
 from app.database.event_logs import EventLogRepository
-from app.database.monitoring_options import MonitoredEventActionRepository
 from app.database.schema import init_schema
-from app.models.docker_event_action import (
-    DEFAULT_MONITORED_EVENT_ACTIONS,
-    DockerEventAction,
-)
 from app.models.event_log import EventLog
 
 
 @pytest.fixture
-def db_path() -> Path:
-    path = Path(__file__).resolve().parent / f"repository_{uuid4().hex}.db"
+def event_log_repository(test_db_path: Path) -> EventLogRepository:
+    init_schema(test_db_path)
 
-    yield path
-
-    path.unlink(missing_ok=True)
-
-
-@pytest.fixture
-def event_log_repository(db_path: Path) -> EventLogRepository:
-    init_schema(db_path)
-
-    return EventLogRepository(str(db_path))
-
-
-@pytest.fixture
-def monitored_action_repository(db_path: Path) -> MonitoredEventActionRepository:
-    init_schema(db_path)
-
-    return MonitoredEventActionRepository(str(db_path))
+    return EventLogRepository(str(test_db_path))
 
 
 class TestEventLogRepository:
@@ -103,33 +81,3 @@ class TestEventLogRepository:
         event_log_repository.delete_all()
 
         assert event_log_repository.count_filtered("", "", "", "") == 0
-
-
-class TestMonitoredEventActionRepository:
-    def test_seeds_defaults_only_when_table_is_empty(
-        self,
-        monitored_action_repository: MonitoredEventActionRepository,
-    ) -> None:
-        monitored_action_repository.seed_defaults()
-
-        assert (
-            monitored_action_repository.select_all() == DEFAULT_MONITORED_EVENT_ACTIONS
-        )
-
-        monitored_action_repository.replace_all({DockerEventAction.DIE})
-        monitored_action_repository.seed_defaults()
-
-        assert monitored_action_repository.select_all() == {DockerEventAction.DIE}
-
-    def test_replaces_monitored_actions(
-        self,
-        monitored_action_repository: MonitoredEventActionRepository,
-    ) -> None:
-        monitored_action_repository.replace_all(
-            {DockerEventAction.DIE, DockerEventAction.OOM}
-        )
-
-        assert monitored_action_repository.select_all() == {
-            DockerEventAction.DIE,
-            DockerEventAction.OOM,
-        }

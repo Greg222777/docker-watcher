@@ -2,6 +2,7 @@ import sys
 import types
 from pathlib import Path
 from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 
@@ -24,6 +25,15 @@ if "docker" not in sys.modules:
     docker_errors_module.NotFound = NotFound
     sys.modules["docker"] = docker_module
     sys.modules["docker.errors"] = docker_errors_module
+
+
+@pytest.fixture
+def test_db_path() -> Path:
+    db_path = Path(__file__).resolve().parent / f"repository_{uuid4().hex}.db"
+
+    yield db_path
+
+    db_path.unlink(missing_ok=True)
 
 
 @pytest.fixture
