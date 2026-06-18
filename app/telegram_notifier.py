@@ -28,6 +28,10 @@ def send_message(message: str) -> None:
         logger.warning("Could not send Telegram message: %s", error)
 
 
+def send_event_log(event: EventLog) -> None:
+    send_message(_event_message(event))
+
+
 def _event_message(event: EventLog) -> str:
     lines = [
         "Docker event",
