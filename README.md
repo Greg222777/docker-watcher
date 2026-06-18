@@ -1,10 +1,16 @@
 # Docker Watcher 🐳
 
-[![GitHub stars](https://img.shields.io/github/stars/Greg222777/docker-watcher)](https://github.com/Greg222777/docker-watcher/stargazers)
-[![Version](https://img.shields.io/github/v/tag/Greg222777/docker-watcher)](https://github.com/Greg222777/docker-watcher/tags)
-[![CI](https://img.shields.io/github/actions/workflow/status/Greg222777/docker-watcher/ci.yml?branch=main)](https://github.com/Greg222777/docker-watcher/actions/workflows/ci.yml)
-[![Docker Pulls](https://img.shields.io/docker/pulls/gregorynowik/docker-watcher)](https://hub.docker.com/r/gregorynowik/docker-watcher)
-[![Docker Image Size](https://img.shields.io/docker/image-size/gregorynowik/docker-watcher/latest)](https://hub.docker.com/r/gregorynowik/docker-watcher)
+<p align="center">
+  <img src="app/static/img/docker-watcher-logo.png" alt="Docker Watcher logo" width="160">
+</p>
+
+<p align="center">
+  <a href="https://github.com/Greg222777/docker-watcher/stargazers"><img src="https://img.shields.io/github/stars/Greg222777/docker-watcher" alt="GitHub stars"></a>
+  <a href="https://github.com/Greg222777/docker-watcher/tags"><img src="https://img.shields.io/github/v/tag/Greg222777/docker-watcher" alt="Version"></a>
+  <a href="https://github.com/Greg222777/docker-watcher/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Greg222777/docker-watcher/ci.yml?branch=main" alt="CI"></a>
+  <a href="https://hub.docker.com/r/gregorynowik/docker-watcher"><img src="https://img.shields.io/docker/pulls/gregorynowik/docker-watcher" alt="Docker Pulls"></a>
+  <a href="https://hub.docker.com/r/gregorynowik/docker-watcher"><img src="https://img.shields.io/docker/image-size/gregorynowik/docker-watcher/latest" alt="Docker Image Size"></a>
+</p>
 
 Docker Watcher monitors Docker container events, stores them locally in SQLite,
 captures recent container logs, and can send Telegram notifications when watched

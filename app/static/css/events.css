@@ -32,6 +32,23 @@ h1 {
     font-weight: 700;
 }
 
+.app-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.app-title h1 {
+    margin: 0;
+}
+
+.app-logo {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+}
+
 .subtitle {
     margin: 0;
     color: var(--muted);
