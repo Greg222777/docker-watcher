@@ -1,4 +1,4 @@
-from app.database import EventLogRepository
+from app.database.event_logs import EventLogRepository
 from app.database.schema import init_schema
 from app.models.event_log import EventLog
 

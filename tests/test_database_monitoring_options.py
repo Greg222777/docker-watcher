@@ -1,4 +1,4 @@
-from app.database import MonitoredEventActionRepository
+from app.database.monitoring_options import MonitoredEventActionRepository
 from app.database.schema import init_schema
 from app.models.docker_event_action import (
     DEFAULT_MONITORED_EVENT_ACTIONS,

@@ -27,66 +27,6 @@
         const loader = panel.querySelector(".analysis-loader");
         const result = panel.querySelector(".analysis-result");
 
-        function escapeHtml(value) {
-            return value
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#039;");
-        }
-
-        function renderMarkdownLite(markdown) {
-            const lines = markdown.split(/\r?\n/);
-            const html = [];
-            let listOpen = false;
-
-            for (const line of lines) {
-                const trimmed = line.trim();
-
-                if (!trimmed) {
-                    if (listOpen) {
-                        html.push("</ul>");
-                        listOpen = false;
-                    }
-                    continue;
-                }
-
-                const heading = trimmed.match(/^(#{1,4})\s+(.+)$/);
-                if (heading) {
-                    if (listOpen) {
-                        html.push("</ul>");
-                        listOpen = false;
-                    }
-                    const level = Math.min(heading[1].length + 1, 4);
-                    html.push(`<h${level}>${escapeHtml(heading[2])}</h${level}>`);
-                    continue;
-                }
-
-                const listItem = trimmed.match(/^[-*]\s+(.+)$/);
-                if (listItem) {
-                    if (!listOpen) {
-                        html.push("<ul>");
-                        listOpen = true;
-                    }
-                    html.push(`<li>${escapeHtml(listItem[1])}</li>`);
-                    continue;
-                }
-
-                if (listOpen) {
-                    html.push("</ul>");
-                    listOpen = false;
-                }
-                html.push(`<p>${escapeHtml(trimmed)}</p>`);
-            }
-
-            if (listOpen) {
-                html.push("</ul>");
-            }
-
-            return html.join("");
-        }
-
         fetch(panel.dataset.analysisUrl)
             .then(async (response) => {
                 const payload = await response.json();
@@ -100,7 +40,7 @@
             .then((analysis) => {
                 loader.hidden = true;
                 result.hidden = false;
-                result.innerHTML = renderMarkdownLite(analysis);
+                result.textContent = analysis;
             })
             .catch((error) => {
                 loader.hidden = true;

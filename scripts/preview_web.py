@@ -8,10 +8,8 @@ ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR))
 
 import app.web_server as web_server  # noqa: E402
-from app.database import (  # noqa: E402
-    EventLogRepository,
-    MonitoredEventActionRepository,
-)
+from app.database.event_logs import EventLogRepository  # noqa: E402
+from app.database.monitoring_options import MonitoredEventActionRepository  # noqa: E402
 from app.database.schema import init_schema  # noqa: E402
 from app.models.event_log import EventLog  # noqa: E402
 from app.web_server import run_web_server  # noqa: E402
@@ -50,136 +48,96 @@ def seed_mock_data(
     clear_logs()
 
     now = datetime.now().replace(microsecond=0)
+    storage_failure_at = datetime.fromisoformat("2026-06-10T14:23:16")
     events = [
-        build_event(
+        EventLog(
             id=1,
             container_name="docker-watcher",
             container_id="f4a7d9b2138c0d4a5e6f778899001122",
             action="start",
-            exit_code=None,
-            created_at=now - timedelta(minutes=2),
-            log_body=[
-                "Docker Watcher is listening for container events...",
-                "Web UI is available on port 8000.",
-            ],
+            created_at=(now - timedelta(minutes=2)).isoformat(),
         ),
-        build_event(
+        EventLog(
             id=2,
             container_name="api-service",
             container_id="a18bc2d384ef5678901234567890abcd",
             action="die",
             exit_code="1",
-            created_at=now - timedelta(minutes=8),
-            log_body=[
-                "Starting API service",
-                "Unhandled RuntimeError: database connection failed",
-                "Container exited with code 1",
-            ],
+            created_at=(now - timedelta(minutes=8)).isoformat(),
         ),
-        build_event(
+        EventLog(
             id=3,
             container_name="postgres",
             container_id="9f8e7d6c5b4a32100123456789abcdef",
             action="health_status: healthy",
-            exit_code=None,
-            created_at=now - timedelta(minutes=17),
-            log_body=[
-                "database system is ready to accept connections",
-            ],
+            created_at=(now - timedelta(minutes=17)).isoformat(),
         ),
-        build_event(
+        EventLog(
             id=4,
             container_name="redis-cache",
             container_id="1234567890abcdef1234567890abcdef",
             action="restart",
             exit_code="0",
-            created_at=now - timedelta(hours=1),
-            log_body=None,
+            created_at=(now - timedelta(hours=1)).isoformat(),
         ),
-        build_event(
+        EventLog(
             id=5,
             container_name="worker-storage",
             container_id="b8d7a4f1c9e24001a88bb66123cc9900",
             action="die",
             exit_code="1",
-            created_at=datetime.fromisoformat("2026-06-10T14:23:16"),
-            log_body=[
-                "2026-06-10T14:17:03.124Z INFO  Starting application...",
-                "2026-06-10T14:17:04.451Z INFO  Connected to database",
-                "2026-06-10T14:17:05.832Z INFO  Initializing log storage",
-                "2026-06-10T14:17:06.104Z INFO  Processing scheduled tasks",
-                "",
-                "2026-06-10T14:23:11.887Z WARN  Failed to rotate log file: no space left on device",
-                "2026-06-10T14:23:12.014Z WARN  Disk usage critical: 99%",
-                "",
-                '2026-06-10T14:23:15.223Z ERROR Failed to write file "/app/data/cache/session_421.tmp"',
-                "Error: ENOSPC: no space left on device, write",
-                "",
-                "2026-06-10T14:23:15.224Z ERROR Failed to save application state",
-                "Error: ENOSPC: no space left on device",
-                "",
-                "2026-06-10T14:23:16.118Z ERROR Database write failed",
-                "SQLITE_FULL: database or disk is full",
-                "",
-                "2026-06-10T14:23:16.542Z FATAL Unable to continue operation",
-                "Reason: persistent storage unavailable",
-                "",
-                "2026-06-10T14:23:16.543Z INFO  Shutting down...",
-                "2026-06-10T14:23:16.712Z ERROR Process terminated",
-            ],
+            created_at=storage_failure_at.isoformat(),
         ),
     ]
+    log_lines = {
+        1: [
+            "Docker Watcher is listening for container events...",
+            "Web UI is available on port 8000.",
+        ],
+        2: [
+            "Starting API service",
+            "Unhandled RuntimeError: database connection failed",
+            "Container exited with code 1",
+        ],
+        3: [
+            "database system is ready to accept connections",
+        ],
+        5: [
+            "2026-06-10T14:17:03.124Z INFO  Starting application...",
+            "2026-06-10T14:17:04.451Z INFO  Connected to database",
+            "2026-06-10T14:17:05.832Z INFO  Initializing log storage",
+            "2026-06-10T14:17:06.104Z INFO  Processing scheduled tasks",
+            "",
+            "2026-06-10T14:23:11.887Z WARN  Failed to rotate log file: no space left on device",
+            "2026-06-10T14:23:12.014Z WARN  Disk usage critical: 99%",
+            "",
+            '2026-06-10T14:23:15.223Z ERROR Failed to write file "/app/data/cache/session_421.tmp"',
+            "Error: ENOSPC: no space left on device, write",
+            "",
+            "2026-06-10T14:23:15.224Z ERROR Failed to save application state",
+            "Error: ENOSPC: no space left on device",
+            "",
+            "2026-06-10T14:23:16.118Z ERROR Database write failed",
+            "SQLITE_FULL: database or disk is full",
+            "",
+            "2026-06-10T14:23:16.542Z FATAL Unable to continue operation",
+            "Reason: persistent storage unavailable",
+            "",
+            "2026-06-10T14:23:16.543Z INFO  Shutting down...",
+            "2026-06-10T14:23:16.712Z ERROR Process terminated",
+        ],
+    }
 
     for event in events:
-        event_log_repository.save(event)
-
-
-def build_event(
-    id: int,
-    container_name: str,
-    container_id: str,
-    action: str,
-    exit_code: str | None,
-    created_at: datetime,
-    log_body: list[str] | None,
-) -> EventLog:
-    log_file_path = None
-    created_at_value = created_at.isoformat()
-
-    if log_body is not None:
-        log_file_path = str(
-            write_log_file(
-                event_id=id,
-                container_name=container_name,
-                action=action,
-                created_at=created_at_value,
-                lines=log_body,
+        if lines := log_lines.get(event.id or 0):
+            filename = f"{event.id:02d}_{sanitize(event.container_name)}_{sanitize(event.action)}.log"
+            log_file = LOG_DIR / filename
+            log_file.write_text(
+                "\n".join(f"{event.created_at} {line}" for line in lines) + "\n",
+                encoding="utf-8",
             )
-        )
-
-    return EventLog(
-        id=id,
-        container_name=container_name,
-        container_id=container_id,
-        action=action,
-        exit_code=exit_code,
-        log_file_path=log_file_path,
-        created_at=created_at_value,
-    )
-
-
-def write_log_file(
-    event_id: int,
-    container_name: str,
-    action: str,
-    created_at: str,
-    lines: list[str],
-) -> Path:
-    filename = f"{event_id:02d}_{sanitize(container_name)}_{sanitize(action)}.log"
-    log_file = LOG_DIR / filename
-    timestamped_lines = [f"{created_at} {line}" for line in lines]
-    log_file.write_text("\n".join(timestamped_lines) + "\n", encoding="utf-8")
-    return log_file
+            event.log_file_path = str(log_file)
+        event_log_repository.save(event)
 
 
 def sanitize(value: str) -> str:

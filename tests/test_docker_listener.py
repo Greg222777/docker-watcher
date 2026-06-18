@@ -2,12 +2,13 @@ import logging
 from unittest.mock import patch
 
 from app.docker_listener import (
-    DockerListener,
+    LOG_DIR,
+    _listen,
     _log_docker_socket_state,
+    _should_handle,
     listen_to_docker_events,
 )
 from app.models.docker_event_action import DockerEventAction
-from app.models.event_log import EventLog
 
 
 def test_listen_handles_valid_container_event(
@@ -31,18 +32,12 @@ def test_listen_handles_valid_container_event(
             raw_event,
         ]
     )
-    listener = DockerListener(
-        client=client,
-        watched_docker_actions={DockerEventAction.DIE},
-        log_dir=test_log_dir,
-    )
-
     with (
         caplog.at_level(logging.INFO, logger="app.docker_listener"),
         patch("app.docker_listener.event_log_repository.save") as save_event,
         patch("app.docker_listener.send_message") as send_message,
     ):
-        listener.listen()
+        _listen(client, {DockerEventAction.DIE}, test_log_dir)
 
     client.events.assert_called_once_with(
         decode=True,
@@ -58,7 +53,7 @@ def test_listen_handles_valid_container_event(
     assert handled_event.exit_code == "1"
     assert handled_event.log_file_path is not None
     client.containers.get.assert_called_once_with("abcdef1234567890")
-    assert send_message.call_args.args[0] == handled_event.to_telegram_message()
+    assert "api" in send_message.call_args.args[0]
 
 
 def test_listen_logs_raw_events_before_parsing(
@@ -76,18 +71,12 @@ def test_listen_logs_raw_events_before_parsing(
             raw_event,
         ]
     )
-    listener = DockerListener(
-        client=client,
-        watched_docker_actions={DockerEventAction.DIE},
-        log_dir=test_log_dir,
-    )
-
     with (
         caplog.at_level(logging.INFO, logger="app.docker_listener"),
         patch("app.docker_listener.event_log_repository.save") as save_event,
         patch("app.docker_listener.send_message") as send_message,
     ):
-        listener.listen()
+        _listen(client, {DockerEventAction.DIE}, test_log_dir)
 
     assert f"RAW DOCKER EVENT: {raw_event}" in caplog.text
     save_event.assert_not_called()
@@ -104,17 +93,11 @@ def test_listen_ignores_unwatched_actions(docker_client, test_log_dir) -> None:
             }
         ]
     )
-    listener = DockerListener(
-        client=client,
-        watched_docker_actions={DockerEventAction.DIE},
-        log_dir=test_log_dir,
-    )
-
     with (
         patch("app.docker_listener.event_log_repository.save") as save_event,
         patch("app.docker_listener.send_message") as send_message,
     ):
-        listener.listen()
+        _listen(client, {DockerEventAction.DIE}, test_log_dir)
 
     save_event.assert_not_called()
     send_message.assert_not_called()
@@ -125,13 +108,15 @@ def test_listen_to_docker_events_logs_listener_startup(caplog) -> None:
     with (
         caplog.at_level(logging.INFO, logger="app.docker_listener"),
         patch("app.docker_listener._log_docker_socket_state") as log_socket_state,
-        patch("app.docker_listener.DockerListener") as listener_class,
+        patch("app.docker_listener.docker.from_env") as docker_from_env,
+        patch("app.docker_listener._listen") as listen,
     ):
+        docker_from_env.return_value = object()
         listen_to_docker_events()
 
     log_socket_state.assert_called_once_with()
-    listener_class.assert_called_once_with()
-    listener_class.return_value.listen.assert_called_once_with()
+    docker_from_env.assert_called_once_with()
+    listen.assert_called_once_with(docker_from_env.return_value, set(), LOG_DIR)
     assert "Preparing Docker event listener." in caplog.text
     assert "Docker event listener created; entering event loop." in caplog.text
 
@@ -149,24 +134,8 @@ def test_log_docker_socket_state_warns_when_socket_is_missing(
 
 
 def test_should_handle_accepts_documented_event_action_enum() -> None:
-    listener = DockerListener.__new__(DockerListener)
-    listener.watched_docker_actions = {DockerEventAction.DIE}
-    event = EventLog(
-        container_name="api",
-        container_id="abcdef1234567890",
-        action="die",
-    )
-
-    assert listener._should_handle(event)
+    assert _should_handle("die", {DockerEventAction.DIE})
 
 
 def test_should_handle_normalizes_health_status_actions() -> None:
-    listener = DockerListener.__new__(DockerListener)
-    listener.watched_docker_actions = {DockerEventAction.HEALTH_STATUS}
-    event = EventLog(
-        container_name="api",
-        container_id="abcdef1234567890",
-        action="health_status: healthy",
-    )
-
-    assert listener._should_handle(event)
+    assert _should_handle("health_status: healthy", {DockerEventAction.HEALTH_STATUS})

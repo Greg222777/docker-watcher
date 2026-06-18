@@ -257,34 +257,8 @@ a:hover {
 .analysis-result {
     color: var(--text);
     font: 14px/1.55 Arial, Helvetica, sans-serif;
-}
-
-.analysis-result h2,
-.analysis-result h3,
-.analysis-result h4 {
-    margin: 18px 0 8px;
-    color: #172033;
-    font-size: 16px;
-    line-height: 1.25;
-}
-
-.analysis-result h2:first-child,
-.analysis-result h3:first-child,
-.analysis-result h4:first-child {
-    margin-top: 0;
-}
-
-.analysis-result p {
-    margin: 0 0 10px;
-}
-
-.analysis-result ul {
-    margin: 0 0 12px;
-    padding-left: 22px;
-}
-
-.analysis-result li {
-    margin: 4px 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .analysis-error {
