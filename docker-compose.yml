@@ -1,16 +1,13 @@
 services:
   dockerwatcher:
-    image: gregorynowik/docker-watcher:latest
+    build: .
+    image: docker-watcher:local
     container_name: dockerwatcher
     restart: unless-stopped
-    environment:
-      - TELEGRAM_BOT_TOKEN=your_bot_token_here
-      - TELEGRAM_CHAT_ID=your_chat_id_here
-      - OPENAI_API_KEY=your_openai_api_key_here
-      - WEB_PORT=8000
-      - LOG_LEVEL=INFO
+    env_file:
+      - .env
     ports:
-      - "8000:8000"
+      - "${WEB_PORT:-8000}:${WEB_PORT:-8000}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - dockerwatcher_data:/data
