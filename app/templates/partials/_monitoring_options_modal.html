@@ -16,6 +16,30 @@
                     {{ action.value.replace("_", " ") }}
                 </label>
             {% endfor %}
+            <label class="checkbox-label">
+                <input
+                    type="checkbox"
+                    name="receive_daily_status"
+                    {% if telegram_options.receive_daily_status %}checked{% endif %}
+                >
+                Receive daily status
+            </label>
+            <label>
+                Status time
+                <input
+                    type="time"
+                    name="daily_status_time"
+                    value="{{ telegram_options.daily_status_time }}"
+                >
+            </label>
+            <label class="checkbox-label">
+                <input
+                    type="checkbox"
+                    name="receive_event_notifications"
+                    {% if telegram_options.receive_event_notifications %}checked{% endif %}
+                >
+                Receive event notifications
+            </label>
         </div>
         <div class="modal-footer">
             <input

@@ -320,6 +320,10 @@ a:hover {
     padding: 16px;
 }
 
+.options-grid input[type="time"] {
+    width: 160px;
+}
+
 .checkbox-label {
     display: flex;
     align-items: center;

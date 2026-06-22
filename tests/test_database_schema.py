@@ -17,4 +17,8 @@ def test_init_schema_creates_application_tables(tmp_path) -> None:
     with engine.connect() as connection:
         table_names = set(inspect(connection).get_table_names())
 
-    assert table_names == {"container_events", "monitored_event_actions"}
+    assert table_names == {
+        "container_events",
+        "monitored_event_actions",
+        "telegram_options",
+    }

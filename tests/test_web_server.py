@@ -5,12 +5,18 @@ import pytest
 from app import web_server
 from app.models.docker_event_action import DockerEventAction
 from app.models.event_log import EventLog
+from app.models.telegram_options import TelegramOptions
 
 
 @pytest.fixture
 def web_client():
-    web_server.app.config.update(TESTING=True)
-    return web_server.app.test_client()
+    with patch.object(
+        web_server.telegram_options_repository,
+        "select",
+        return_value=TelegramOptions(),
+    ):
+        web_server.app.config.update(TESTING=True)
+        yield web_server.app.test_client()
 
 
 def test_events_page_renders_events(web_client) -> None:
@@ -277,10 +283,13 @@ def test_static_css_is_served(web_client) -> None:
 
 
 def test_save_monitoring_options_updates_repository(web_client) -> None:
-    with patch.object(
-        web_server.monitored_event_action_repository,
-        "replace_all",
-    ) as replace_all:
+    with (
+        patch.object(
+            web_server.monitored_event_action_repository,
+            "replace_all",
+        ) as replace_all,
+        patch.object(web_server.telegram_options_repository, "save"),
+    ):
         response = web_client.post(
             "/options/monitoring",
             data={

@@ -1,5 +1,6 @@
 import logging
 import os
+from datetime import time
 from pathlib import Path
 from shutil import rmtree
 
@@ -16,9 +17,14 @@ from flask import (
 
 from app.ai_log_analyzer import AILogAnalysisError, analyze_event_log
 from app.config import LOG_DIR
-from app.database import event_log_repository, monitored_event_action_repository
+from app.database import (
+    event_log_repository,
+    monitored_event_action_repository,
+    telegram_options_repository,
+)
 from app.models.docker_event_action import WATCHED_DOCKER_ACTIONS, DockerEventAction
 from app.models.event_log import EventLog
+from app.models.telegram_options import TelegramOptions
 
 WEB_HOST = "0.0.0.0"
 WEB_PORT = int(os.getenv("WEB_PORT", "8000"))
@@ -78,6 +84,7 @@ def events_page() -> str:
         page=page,
         per_page=EVENTS_PER_PAGE,
         start_filter=start_filter,
+        telegram_options=telegram_options_repository.select(),
         total_events=total_events,
         total_pages=total_pages,
         url_for_page=_url_for_page,
@@ -142,6 +149,18 @@ def save_monitoring_options():
     }
 
     monitored_event_action_repository.replace_all(actions)
+    telegram_options_repository.save(
+        TelegramOptions(
+            receive_daily_status=request.form.get("receive_daily_status") == "on",
+            daily_status_time=_valid_time(
+                request.form.get("daily_status_time", ""),
+                default="09:00",
+            ),
+            receive_event_notifications=(
+                request.form.get("receive_event_notifications") == "on"
+            ),
+        )
+    )
 
     return redirect(_safe_redirect_path(request.form.get("redirect_to", "/")))
 
@@ -161,6 +180,15 @@ def _positive_int(value: str | None, default: int) -> int:
         return default
 
     return parsed_value if parsed_value > 0 else default
+
+
+def _valid_time(value: str, default: str) -> str:
+    try:
+        time.fromisoformat(value)
+    except ValueError:
+        return default
+
+    return value
 
 
 def _pagination_for(total_events: int, requested_page: int) -> tuple[int, int]:

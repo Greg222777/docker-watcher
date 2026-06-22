@@ -1,5 +1,7 @@
 from app.database.event_logs import EventLogRepository
 from app.database.monitoring_options import MonitoredEventActionRepository
+from app.database.telegram_options import TelegramOptionsRepository
 
 event_log_repository = EventLogRepository()
 monitored_event_action_repository = MonitoredEventActionRepository()
+telegram_options_repository = TelegramOptionsRepository()

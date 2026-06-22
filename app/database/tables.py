@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Text
+from sqlalchemy import Boolean, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.session import Base
@@ -43,3 +43,12 @@ class MonitoredEventActionRecord(Base):
     __tablename__ = "monitored_event_actions"
 
     action: Mapped[str] = mapped_column(String, primary_key=True)
+
+
+class TelegramOptionsRecord(Base):
+    __tablename__ = "telegram_options"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    receive_daily_status: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    daily_status_time: Mapped[str] = mapped_column(String(5), nullable=False)
+    receive_event_notifications: Mapped[bool] = mapped_column(Boolean, nullable=False)

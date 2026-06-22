@@ -6,7 +6,11 @@ from sqlalchemy.pool import NullPool
 
 from app.config import DB_PATH
 from app.database.session import Base
-from app.database.tables import ContainerEventRecord, MonitoredEventActionRecord
+from app.database.tables import (
+    ContainerEventRecord,
+    MonitoredEventActionRecord,
+    TelegramOptionsRecord,
+)
 
 
 def init_schema(db_path: str | Path = DB_PATH) -> None:
@@ -21,5 +25,6 @@ def init_schema(db_path: str | Path = DB_PATH) -> None:
         tables=[
             cast(Table, ContainerEventRecord.__table__),
             cast(Table, MonitoredEventActionRecord.__table__),
+            cast(Table, TelegramOptionsRecord.__table__),
         ],
     )
