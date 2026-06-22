@@ -1,10 +1,12 @@
 import logging
 import os
+from datetime import datetime, timedelta
 from html import escape
 
 import requests
 from requests import RequestException
 
+from app.database import event_log_repository, telegram_options_repository
 from app.models.event_log import EventLog
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -13,8 +15,25 @@ TELEGRAM_API_BASE_URL = "https://api.telegram.org"
 logger = logging.getLogger(__name__)
 
 
-def send_message(message: str) -> None:
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+def is_configured() -> bool:
+    return bool(TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID)
+
+
+def send_event_notification(event: EventLog) -> None:
+    if telegram_options_repository.select().receive_event_notifications:
+        _send_message(_event_message(event))
+
+
+def send_daily_status() -> None:
+    options = telegram_options_repository.select()
+    if not options.receive_daily_status or not options.daily_status_time:
+        return
+
+    _send_message(_daily_status_message(datetime.now()))
+
+
+def _send_message(message: str) -> None:
+    if not is_configured():
         logger.info("Telegram is not configured.")
         return
 
@@ -44,3 +63,21 @@ def _event_message(event: EventLog) -> str:
         lines.append(f"<b>Logs:</b> <code>{escape(event.log_file_path)}</code>")
 
     return "\n".join(lines)
+
+
+def _daily_status_message(now: datetime) -> str:
+    start = now - timedelta(days=1)
+    events_count = event_log_repository.count_filtered(
+        start_timestamp=start.isoformat(timespec="seconds"),
+        end_timestamp=now.isoformat(timespec="seconds"),
+        container_filter="",
+        action_filter="",
+    )
+
+    return "\n".join(
+        [
+            "Docker Watcher daily status",
+            f"<b>Period:</b> {start.isoformat(timespec='minutes')} to {now.isoformat(timespec='minutes')}",
+            f"<b>Events recorded:</b> {events_count}",
+        ]
+    )

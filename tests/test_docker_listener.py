@@ -35,7 +35,7 @@ def test_listen_handles_valid_container_event(
     with (
         caplog.at_level(logging.INFO, logger="app.docker_listener"),
         patch("app.docker_listener.event_log_repository.save") as save_event,
-        patch("app.docker_listener.send_message") as send_message,
+        patch("app.docker_listener.send_event_notification") as notify_event,
     ):
         _listen(client, {DockerEventAction.DIE}, test_log_dir)
 
@@ -45,7 +45,7 @@ def test_listen_handles_valid_container_event(
     )
     assert f"RAW DOCKER EVENT: {raw_event}" in caplog.text
     save_event.assert_called_once()
-    send_message.assert_called_once()
+    notify_event.assert_called_once()
     handled_event = save_event.call_args.args[0]
     assert handled_event.container_name == "api"
     assert handled_event.container_id == "abcdef1234567890"
@@ -53,7 +53,7 @@ def test_listen_handles_valid_container_event(
     assert handled_event.exit_code == "1"
     assert handled_event.log_file_path is not None
     client.containers.get.assert_called_once_with("abcdef1234567890")
-    assert "api" in send_message.call_args.args[0]
+    assert notify_event.call_args.args[0] is handled_event
 
 
 def test_listen_logs_raw_events_before_parsing(
@@ -74,13 +74,13 @@ def test_listen_logs_raw_events_before_parsing(
     with (
         caplog.at_level(logging.INFO, logger="app.docker_listener"),
         patch("app.docker_listener.event_log_repository.save") as save_event,
-        patch("app.docker_listener.send_message") as send_message,
+        patch("app.docker_listener.send_event_notification") as notify_event,
     ):
         _listen(client, {DockerEventAction.DIE}, test_log_dir)
 
     assert f"RAW DOCKER EVENT: {raw_event}" in caplog.text
     save_event.assert_not_called()
-    send_message.assert_not_called()
+    notify_event.assert_not_called()
 
 
 def test_listen_ignores_unwatched_actions(docker_client, test_log_dir) -> None:
@@ -95,12 +95,12 @@ def test_listen_ignores_unwatched_actions(docker_client, test_log_dir) -> None:
     )
     with (
         patch("app.docker_listener.event_log_repository.save") as save_event,
-        patch("app.docker_listener.send_message") as send_message,
+        patch("app.docker_listener.send_event_notification") as notify_event,
     ):
         _listen(client, {DockerEventAction.DIE}, test_log_dir)
 
     save_event.assert_not_called()
-    send_message.assert_not_called()
+    notify_event.assert_not_called()
     client.containers.get.assert_not_called()
 
 

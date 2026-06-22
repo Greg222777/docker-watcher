@@ -2,6 +2,7 @@ import logging
 from threading import Thread
 
 from app.config import DB_PATH
+from app.cron_telegram_status import start as start_telegram_status_cron
 from app.database import monitored_event_action_repository
 from app.database.schema import init_schema
 from app.docker_listener import listen_to_docker_events
@@ -20,6 +21,8 @@ def main() -> None:
     monitored_event_action_repository.seed_defaults()
     logger.info("Starting Docker Watcher web UI thread.")
     Thread(target=run_web_server, daemon=True).start()
+    logger.info("Starting Telegram daily status cron.")
+    start_telegram_status_cron()
     logger.info("Starting Docker event listener.")
     listen_to_docker_events()
 

@@ -17,6 +17,7 @@ from flask import (
 
 from app.ai_log_analyzer import AILogAnalysisError, analyze_event_log
 from app.config import LOG_DIR
+from app.cron_telegram_status import sync_schedule as sync_telegram_status_schedule
 from app.database import (
     event_log_repository,
     monitored_event_action_repository,
@@ -152,15 +153,13 @@ def save_monitoring_options():
     telegram_options_repository.save(
         TelegramOptions(
             receive_daily_status=request.form.get("receive_daily_status") == "on",
-            daily_status_time=_valid_time(
-                request.form.get("daily_status_time", ""),
-                default="09:00",
-            ),
+            daily_status_time=_valid_time(request.form.get("daily_status_time", "")),
             receive_event_notifications=(
                 request.form.get("receive_event_notifications") == "on"
             ),
         )
     )
+    sync_telegram_status_schedule()
 
     return redirect(_safe_redirect_path(request.form.get("redirect_to", "/")))
 
@@ -182,13 +181,16 @@ def _positive_int(value: str | None, default: int) -> int:
     return parsed_value if parsed_value > 0 else default
 
 
-def _valid_time(value: str, default: str) -> str:
-    try:
-        time.fromisoformat(value)
-    except ValueError:
-        return default
+def _valid_time(value: str) -> str:
+    if not value:
+        return ""
 
-    return value
+    try:
+        parsed_time = time.fromisoformat(value)
+    except ValueError:
+        return ""
+
+    return parsed_time.strftime("%H:%M")
 
 
 def _pagination_for(total_events: int, requested_page: int) -> tuple[int, int]:
