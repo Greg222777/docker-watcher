@@ -1,14 +1,8 @@
-import os
 from pathlib import Path
-from typing import Any
-
-import requests
-from requests import RequestException
 
 from app.models.event_log import EventLog
+from app.openai_client import OPENAI_MODEL, OpenAIClientError, send_prompt
 
-OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
-OPENAI_MODEL = "gpt-4o-mini"
 MAX_LOG_CHARS = 20000
 PROMPT_TEMPLATE_PATH = (
     Path(__file__).resolve().parent / "prompts" / "ai_log_analysis_prompt.txt"
@@ -28,11 +22,10 @@ def analyze_event_log(
     log_content = _read_log_file(log_path)
     prompt = _build_prompt(event=event, log_content=log_content)
 
-    return _send_prompt(
-        prompt=prompt,
-        api_key=os.getenv("OPENAI_API_KEY") if api_key is None else api_key,
-        model=model,
-    )
+    try:
+        return send_prompt(prompt=prompt, api_key=api_key, model=model)
+    except OpenAIClientError as error:
+        raise AILogAnalysisError(str(error)) from error
 
 
 def _read_log_file(log_path: Path) -> str:
@@ -62,54 +55,3 @@ def _build_prompt(event: EventLog, log_content: str) -> str:
         log_file_path=event.log_file_path or "unknown",
         log_content=log_content,
     )
-
-
-def _send_prompt(prompt: str, api_key: str | None, model: str) -> str:
-    if not api_key:
-        raise AILogAnalysisError("OPENAI_API_KEY is not set.")
-
-    payload: dict[str, Any] = {
-        "model": model,
-        "input": prompt,
-    }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-
-    try:
-        session = requests.Session()
-        session.trust_env = False
-        response = session.post(
-            OPENAI_RESPONSES_URL,
-            json=payload,
-            headers=headers,
-            timeout=45,
-        )
-        response.raise_for_status()
-    except RequestException as error:
-        raise AILogAnalysisError(f"OpenAI request failed: {error}") from error
-
-    data = response.json()
-    output_text = data.get("output_text")
-
-    if isinstance(output_text, str) and output_text.strip():
-        return output_text.strip()
-
-    extracted_text = _extract_text_from_response(data)
-    if extracted_text:
-        return extracted_text
-
-    raise AILogAnalysisError("OpenAI response did not contain analysis text.")
-
-
-def _extract_text_from_response(data: dict[str, Any]) -> str:
-    text_parts: list[str] = []
-
-    for output_item in data.get("output", []):
-        for content_item in output_item.get("content", []):
-            text = content_item.get("text")
-            if isinstance(text, str) and text.strip():
-                text_parts.append(text.strip())
-
-    return "\n\n".join(text_parts)

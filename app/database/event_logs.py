@@ -53,6 +53,19 @@ class EventLogRepository:
 
             return [record.to_event_log() for record in records]
 
+    def select_between(self, start_timestamp: str, end_timestamp: str) -> list[EventLog]:
+        with self.session_factory() as session:
+            records = session.scalars(
+                select(ContainerEventRecord)
+                .where(
+                    ContainerEventRecord.created_at >= start_timestamp,
+                    ContainerEventRecord.created_at <= end_timestamp,
+                )
+                .order_by(ContainerEventRecord.created_at.desc())
+            )
+
+            return [record.to_event_log() for record in records]
+
     def count_filtered(
         self,
         start_timestamp: str,

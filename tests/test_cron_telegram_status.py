@@ -18,8 +18,10 @@ def test_sync_schedule_adds_daily_status_job() -> None:
         ),
         patch("app.cron_telegram_status.scheduler") as scheduler,
     ):
+        scheduler.running = False
         cron_telegram_status.sync_schedule()
 
+    scheduler.start.assert_called_once()
     scheduler.add_job.assert_called_once()
     assert scheduler.add_job.call_args.args[0] is cron_telegram_status.send_daily_status
     assert scheduler.add_job.call_args.kwargs["id"] == "telegram_daily_status"
@@ -49,11 +51,11 @@ def test_sync_schedule_removes_job_without_required_options() -> None:
         scheduler.add_job.assert_not_called()
 
 
-def test_start_does_not_start_scheduler_when_telegram_is_not_configured() -> None:
+def test_sync_schedule_does_not_start_scheduler_when_telegram_is_not_configured() -> None:
     with (
         patch("app.cron_telegram_status.is_configured", return_value=False),
         patch("app.cron_telegram_status.scheduler") as scheduler,
     ):
-        cron_telegram_status.start()
+        cron_telegram_status.sync_schedule()
 
     scheduler.start.assert_not_called()

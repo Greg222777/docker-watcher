@@ -5,22 +5,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.database import telegram_options_repository
-from app.telegram import is_configured, send_daily_status
+from app.telegram_client import is_configured, send_daily_status
 
 DAILY_STATUS_JOB_ID = "telegram_daily_status"
 logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
-
-
-def start() -> None:
-    if not is_configured():
-        logger.info("Telegram daily status cron is disabled: Telegram is not configured.")
-        return
-
-    if not scheduler.running:
-        scheduler.start()
-
-    sync_schedule()
 
 
 def sync_schedule() -> None:
@@ -32,6 +21,9 @@ def sync_schedule() -> None:
     if scheduled_time is None:
         _remove_job()
         return
+
+    if not scheduler.running:
+        scheduler.start()
 
     scheduler.add_job(
         send_daily_status,

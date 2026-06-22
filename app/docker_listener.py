@@ -10,7 +10,7 @@ from app.docker_events.event_log_builder import build_event_log
 from app.docker_events.log_writer import LOG_DIR, write_event_log
 from app.models.docker_event_action import DockerEventAction
 from app.models.event_log import EventLog
-from app.telegram import send_event_notification
+from app.telegram_client import send_event_notification
 
 logger = logging.getLogger(__name__)
 DOCKER_SOCKET_PATH = Path("/var/run/docker.sock")

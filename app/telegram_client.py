@@ -6,8 +6,10 @@ from html import escape
 import requests
 from requests import RequestException
 
+from app.daily_status_analyzer import analyze_daily_status
 from app.database import event_log_repository, telegram_options_repository
 from app.models.event_log import EventLog
+from app.openai_client import OpenAIClientError
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
@@ -29,7 +31,20 @@ def send_daily_status() -> None:
     if not options.receive_daily_status or not options.daily_status_time:
         return
 
-    _send_message(_daily_status_message(datetime.now()))
+    now = datetime.now()
+    start = now - timedelta(days=1)
+
+    try:
+        _send_message(
+            analyze_daily_status(
+                event_log_repository.select_between(
+                    start.isoformat(timespec="seconds"),
+                    now.isoformat(timespec="seconds"),
+                )
+            )
+        )
+    except OpenAIClientError as error:
+        logger.warning("Could not analyze Telegram daily status: %s", error)
 
 
 def _send_message(message: str) -> None:
@@ -63,21 +78,3 @@ def _event_message(event: EventLog) -> str:
         lines.append(f"<b>Logs:</b> <code>{escape(event.log_file_path)}</code>")
 
     return "\n".join(lines)
-
-
-def _daily_status_message(now: datetime) -> str:
-    start = now - timedelta(days=1)
-    events_count = event_log_repository.count_filtered(
-        start_timestamp=start.isoformat(timespec="seconds"),
-        end_timestamp=now.isoformat(timespec="seconds"),
-        container_filter="",
-        action_filter="",
-    )
-
-    return "\n".join(
-        [
-            "Docker Watcher daily status",
-            f"<b>Period:</b> {start.isoformat(timespec='minutes')} to {now.isoformat(timespec='minutes')}",
-            f"<b>Events recorded:</b> {events_count}",
-        ]
-    )
